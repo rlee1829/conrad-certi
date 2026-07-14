@@ -235,6 +235,17 @@ CertApp.ui.renderOperatorChip = function () {
   ]));
 };
 
+// A "사용자 전환" button in the sidebar footer. No password — it just re-opens the name prompt
+// (pre-filled with the current name) so the next person can put their own name on the audit log.
+CertApp.ui.renderSwitchUserLink = function () {
+  var footer = document.querySelector('.sidebar-footer');
+  if (!footer || document.getElementById('switch-user-link')) return;
+  footer.appendChild(CertApp.ui.el('button', {
+    id: 'switch-user-link', class: 'logout-link',
+    onclick: function () { CertApp.ui.promptOperator(); }
+  }, [CertApp.i18n.t('operator.switch')]));
+};
+
 // Shared-password mode: a small "로그아웃" link in the sidebar footer that clears the login
 // session and reloads (back to the login screen).
 CertApp.ui.renderLogoutLink = function () {

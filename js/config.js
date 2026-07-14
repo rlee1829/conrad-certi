@@ -27,7 +27,7 @@ CertApp.cloudEnabled = function () {
    Supabase Auth account (email below) — and the database is locked to logged-in users via the
    RLS policies in supabase-auth.sql. Create that user in Supabase with your chosen password. */
 CertApp.config.sharedLogin = {
-  enabled: true,
+  enabled: false,
   email: 'certledger@conradseoul.com'
 };
 CertApp.loginEnabled = function () {

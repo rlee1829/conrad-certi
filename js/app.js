@@ -35,7 +35,9 @@ CertApp.registerViews = function () {
 function startApp() {
   CertApp.ui.renderOperatorChip();
   if (!CertApp.operator.get()) CertApp.ui.promptOperator();
-  // Shared-password mode: a "로그아웃" link in the sidebar footer clears the session.
+  // A "사용자 전환" button in the sidebar footer lets anyone re-enter their name (no password).
+  CertApp.ui.renderSwitchUserLink();
+  // Shared-password mode (disabled): a "로그아웃" link that clears the login session.
   if (CertApp.loginEnabled && CertApp.loginEnabled()) CertApp.ui.renderLogoutLink();
   CertApp.registerViews();
   CertApp.wireNav();

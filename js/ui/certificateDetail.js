@@ -64,6 +64,7 @@ CertApp.ui.openCertificateDetail = function (certificateId) {
       fieldCell('cd.field.voidReason', rec.voidReason),
       fieldCell('cd.field.refundDate', rec.refundDate),
       fieldCell('cd.field.graceUseDate', rec.graceUseDate),
+      fieldCell('cd.field.mateApprovalNo', rec.mateApprovalNo),
       fieldCell('cl.col.billNo', rec.billNo),
       fieldCell('cl.col.detail', rec.certificateDetail)
     ]));

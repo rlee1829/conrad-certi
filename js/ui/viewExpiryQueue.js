@@ -224,7 +224,8 @@ CertApp.viewExpiryQueue = (function () {
       ui.el('th', { class: 'col-align-center', text: t('eq.col.issuedDate') }),
       ui.el('th', { class: 'col-align-center', text: t('eq.col.expiryDate') }),
       ui.el('th', { class: 'col-align-right', text: t('eq.col.daysOverdue') }),
-      ui.el('th', { class: 'col-align-right', text: t('eq.col.conversion') })
+      ui.el('th', { class: 'col-align-right', text: t('eq.col.conversion') }),
+      ui.el('th', { class: 'col-align-center', text: t('eq.col.action') })
     ])]);
     var tbody = ui.el('tbody');
     queue.forEach(function (item) {
@@ -242,7 +243,11 @@ CertApp.viewExpiryQueue = (function () {
         ui.el('td', { class: 'col-align-center', text: item.record.issuedDate || '–' }),
         ui.el('td', { class: 'col-align-center', text: item.record.expiryDate || '–' }),
         ui.el('td', { class: 'col-align-right', text: item.daysOverdue + t('eq.daysUnit') }),
-        ui.el('td', { class: 'col-align-right' }, [conversionCell(item)])
+        ui.el('td', { class: 'col-align-right' }, [conversionCell(item)]),
+        ui.el('td', { class: 'col-align-center' }, [ui.el('button', {
+          class: 'btn btn-small', text: t('eq.extend.button'),
+          onclick: function () { onExtend(item.record); }
+        })])
       ]));
     });
     table.appendChild(thead);
@@ -260,6 +265,45 @@ CertApp.viewExpiryQueue = (function () {
         });
       });
     }
+  }
+
+  // One-year-ahead default for the new expiry date (from today), so the picker opens on a
+  // sensible extended date the approver can adjust.
+  function oneYearAhead() {
+    var d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return CertApp.formatLocalDate(d);
+  }
+
+  // Extend an expired-but-still-ACTIVE certificate's validity once a manager (Mate) approves.
+  // Requires the Mate Approval # and a future new expiry date; on success the cert leaves the
+  // queue (expiryDate is now in the future) and stays ACTIVE.
+  function onExtend(rec) {
+    var newDateInput = ui.el('input', { type: 'date', value: oneYearAhead() });
+    var approvalInput = ui.el('input', { type: 'text', placeholder: t('eq.extend.approvalPlaceholder') });
+    ui.openModal(t('eq.extend.title', { certNo: rec.certificateNo }), [
+      ui.el('div', { class: 'muted', style: 'margin-bottom:12px' }, [t('eq.extend.desc')]),
+      ui.el('div', { style: 'margin-bottom:12px' }, [
+        ui.el('label', {}, [t('eq.extend.currentExpiry')]),
+        ui.el('div', { class: 'cd-field-value', text: rec.expiryDate || '–' })
+      ]),
+      ui.el('div', { style: 'margin-bottom:12px' }, [
+        ui.el('label', {}, [t('eq.extend.newExpiry')]), newDateInput
+      ]),
+      ui.el('div', {}, [
+        ui.el('label', {}, [t('eq.extend.approvalNo')]), approvalInput
+      ])
+    ], function () {
+      var approvalNo = approvalInput.value.trim();
+      if (!approvalNo) { ui.toast(t('eq.extend.needApproval'), 'warn'); return false; }
+      CertApp.certificateWorkflow.extendExpiry(rec.id, {
+        newExpiryDate: newDateInput.value, approvalNo: approvalNo
+      }).then(function () {
+        ui.toast('1' + t('eq.extend.done'), 'success');
+        refresh();
+        CertApp.router.refresh();
+      }).catch(function (err) { ui.toast(err.message, 'error'); });
+    }, t('eq.extend.confirm'));
   }
 
   function onRecognizeSelected() {

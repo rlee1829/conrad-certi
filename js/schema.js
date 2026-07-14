@@ -108,6 +108,7 @@ CertApp.AUDIT_ACTION = {
   VOID: 'VOID',
   EXPIRE_RECOGNIZE: 'EXPIRE_RECOGNIZE',
   GRACE_USE: 'GRACE_USE',
+  EXTEND_EXPIRY: 'EXTEND_EXPIRY',
   CORRECT: 'CORRECT',
   DELETE: 'DELETE',
   UNDO: 'UNDO'
@@ -132,7 +133,7 @@ CertApp.CERTIFICATE_FIELDS = [
   'id', 'category', 'certificateNo', 'issuedDate', 'expiryDate', 'status', 'dc',
   'amountA', 'paymentType', 'certificateDetail', 'usedDate', 'outletPostingAmountB',
   'miscRevPostingDate', 'arPostingAmountC', 'billNo', 'sellerOperaId',
-  'voidReason', 'refundDate', 'graceUseDate', 'needsReview', 'sourceRowRef',
+  'voidReason', 'refundDate', 'graceUseDate', 'mateApprovalNo', 'needsReview', 'sourceRowRef',
   'createdAt', 'updatedAt'
 ];
 

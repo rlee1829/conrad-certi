@@ -12,7 +12,8 @@ CertApp.auditUtil = (function () {
     amountA: 'cl.col.amountA', paymentType: 'cl.col.paymentType', issuedDate: 'cl.col.issuedDate',
     expiryDate: 'cl.col.expiryDate', usedDate: 'cl.col.usedDate', outletPostingAmountB: 'cl.col.outletB',
     arPostingAmountC: 'cl.col.arC', certificateDetail: 'cl.col.detail', billNo: 'cl.col.billNo',
-    voidReason: 'cd.field.voidReason', refundDate: 'cd.field.refundDate', graceUseDate: 'cd.field.graceUseDate'
+    voidReason: 'cd.field.voidReason', refundDate: 'cd.field.refundDate', graceUseDate: 'cd.field.graceUseDate',
+    mateApprovalNo: 'cd.field.mateApprovalNo'
   };
   var DIFF_FIELDS = Object.keys(FIELD_LABEL_KEY);
 

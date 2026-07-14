@@ -409,6 +409,42 @@ CertApp.certificateWorkflow = (function () {
     }).then(function () { return rec; });
   }
 
+  // extendExpiry(id, {newExpiryDate, approvalNo, note}) -> Promise<CertificateRecord>
+  // Extends the validity period of a certificate that is past its expiry date (still ACTIVE,
+  // sitting in the Expiry Queue) once a manager ("Mate") has approved it. Requires a Mate
+  // Approval # — recorded on the record (mateApprovalNo) AND in the audit note so the approval
+  // is always traceable. Status stays ACTIVE; only expiryDate moves forward, so the certificate
+  // drops out of the expiry queue and can be used normally again. Single-level undoable.
+  function extendExpiry(id, input) {
+    return withBatch(function () {
+      var snaps = snapshotCertsByIds([id]);
+      return safeCall(function () {
+        var rec = findRecord(id);
+        var before = clone(rec);
+        if (rec.status !== CertApp.STATUS.ACTIVE) {
+          throw new Error(CertApp.i18n.t('eq.extend.notActive', { certNo: rec.certificateNo }));
+        }
+        var approvalNo = ((input && input.approvalNo) || '').trim();
+        if (!approvalNo) throw new Error(CertApp.i18n.t('eq.extend.needApproval'));
+        var newExpiry = input && input.newExpiryDate;
+        if (!newExpiry) throw new Error(CertApp.i18n.t('eq.extend.needDate'));
+        if (newExpiry <= todayIso()) throw new Error(CertApp.i18n.t('eq.extend.dateMustBeFuture'));
+
+        rec.expiryDate = newExpiry;
+        rec.mateApprovalNo = approvalNo;
+        var note = (input && input.note) || CertApp.i18n.t('eq.extend.auditNote', {
+          approvalNo: approvalNo, from: before.expiryDate || '–', to: newExpiry
+        });
+        return persist(rec).then(function () {
+          return logAudit(CertApp.AUDIT_ACTION.EXTEND_EXPIRY, before, clone(rec), note);
+        }).then(function () { return rec; });
+      }).then(function (rec) {
+        setLastAction(CertApp.i18n.t('cl.toast.bulkDone', { n: 1, verb: CertApp.i18n.t('eq.extend.verb') }), snaps);
+        return rec;
+      });
+    });
+  }
+
   // correctRecord(id, patch) -> Promise<CertificateRecord>
   // Manual data-quality correction for import-flagged (needsReview) rows, or a quick fix
   // from the Certificate List — bypasses the normal lifecycle state machine on purpose
@@ -776,6 +812,7 @@ CertApp.certificateWorkflow = (function () {
     recognizeExpiry: recognizeExpiry,
     bulkYearEndRecognition: bulkYearEndRecognition,
     graceUseExpired: graceUseExpired,
+    extendExpiry: extendExpiry,
     correctRecord: correctRecord,
     deleteRecord: deleteRecord,
     deleteRecords: deleteRecords,

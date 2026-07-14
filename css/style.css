@@ -167,6 +167,7 @@ body {
 }
 .btn:hover { border-color: var(--accent); color: var(--accent-dark); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-small { padding: 4px 12px; font-size: 11px; }
 .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
 .refresh-btn { display: inline-flex; align-items: center; gap: 6px; }
@@ -290,6 +291,7 @@ input.date-text { width: 108px; }
 .action-badge-DELETE { background: var(--danger-light); color: #b8453a; }
 .action-badge-ISSUE, .action-badge-IMPORT { background: var(--ok-light); color: #2d8556; }
 .action-badge-UNDO { background: #f1efe9; color: var(--muted); }
+.action-badge-EXTEND_EXPIRY { background: var(--accent-light); color: var(--accent-dark); }
 
 .history-timeline { border-left: 2px solid var(--border); margin-left: 6px; padding-left: 16px; }
 .history-entry { position: relative; padding-bottom: 16px; }

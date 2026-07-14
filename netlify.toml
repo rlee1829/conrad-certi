@@ -1,0 +1,7 @@
+# Netlify configuration for the Certificate Ledger static site.
+# The app is plain static files (index.html at the repo root) with no build step,
+# so we just publish the repository root as-is. Every push to the connected
+# branch triggers an automatic deploy.
+[build]
+  publish = "."
+  command = ""

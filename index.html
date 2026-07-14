@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Certificate Ledger Dashboard</title>
+<link rel="stylesheet" href="css/style.css?v=32">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="sidebar-brand">
+      <img src="img/conrad-logo.png" alt="Conrad Seoul" class="brand-logo">
+      <div class="brand-sub">Certificate Ledger</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item" data-view="overview">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></span>
+        <span data-i18n="nav.overview">개요</span>
+      </div>
+      <div class="nav-item" data-view="certlist">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg></span>
+        <span data-i18n="nav.certlist">증서 목록</span>
+      </div>
+      <div class="nav-item" data-view="expiry">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg></span>
+        <span data-i18n="nav.expiry">만료 대기열</span>
+      </div>
+      <div class="nav-item" data-view="miscrevenue">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></span>
+        <span data-i18n="nav.miscRevenue">잡이익 원장</span>
+      </div>
+      <div class="nav-item" data-view="auditlog">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path><path d="M12 7v5l3 2"></path></svg></span>
+        <span data-i18n="nav.auditLog">감사 로그</span>
+      </div>
+      <div class="nav-item" data-view="importexport">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v14"></path><path d="M3 13l4 4 4-4"></path><path d="M17 21V7"></path><path d="M21 11l-4-4-4 4"></path></svg></span>
+        <span data-i18n="nav.importexport">가져오기/내보내기</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="operator-chip"></div>
+      <div class="lang-toggle">
+        <button data-lang="ko" onclick="CertApp.i18n.setLang('ko')">KOR</button>
+        <button data-lang="en" onclick="CertApp.i18n.setLang('en')">ENG</button>
+      </div>
+      <div class="footer-card">
+        <div class="footer-title" data-i18n="sidebar.footerTitle">Gift &amp; Service Certificate</div>
+        <div class="footer-sub" data-i18n="sidebar.footerSub">관리 대시보드</div>
+      </div>
+    </div>
+  </aside>
+  <main id="view-container"></main>
+</div>
+
+<script src="js/lib/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=32"></script>
+<script src="js/schema.js?v=32"></script>
+<script src="js/i18n.js?v=32"></script>
+<script src="js/operator.js?v=32"></script>
+<script src="js/db.js?v=32"></script>
+<script src="js/db-cloud.js?v=32"></script>
+<script src="js/calc/accounting.js?v=32"></script>
+<script src="js/calc/calculationEngine.js?v=32"></script>
+<script src="js/import/importMapper.js?v=32"></script>
+<script src="js/import/importGiftCertificate.js?v=32"></script>
+<script src="js/import/importServiceCertificate.js?v=32"></script>
+<script src="js/import/importPipeline.js?v=32"></script>
+<script src="js/workflow/certificateWorkflow.js?v=32"></script>
+<script src="js/export/exportWorkbook.js?v=32"></script>
+<script src="js/ui/components.js?v=32"></script>
+<script src="js/auth.js?v=32"></script>
+<script src="js/ui/auditUtil.js?v=32"></script>
+<script src="js/ui/certificateDetail.js?v=32"></script>
+<script src="js/ui/router.js?v=32"></script>
+<script src="js/ui/viewOverview.js?v=32"></script>
+<script src="js/ui/viewCertificateList.js?v=32"></script>
+<script src="js/ui/viewImportExport.js?v=32"></script>
+<script src="js/ui/viewExpiryQueue.js?v=32"></script>
+<script src="js/ui/viewMiscRevenue.js?v=32"></script>
+<script src="js/ui/viewAuditLog.js?v=32"></script>
+<script src="js/app.js?v=32"></script>
+</body>
+</html>

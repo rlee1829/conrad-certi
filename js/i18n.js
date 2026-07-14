@@ -1,0 +1,331 @@
+/* Korean/English UI language switch. t(key, vars) looks up a string; setLang() persists the
+   choice and re-renders the current view (all views rebuild their DOM from scratch on
+   refresh, so switching language is just "render again with a different dictionary" — no
+   special-casing needed anywhere that already calls CertApp.router.refresh()). */
+window.CertApp = window.CertApp || {};
+CertApp.i18n = (function () {
+  var STORAGE_KEY = 'certapp_lang';
+  var lang = (function () {
+    try { return localStorage.getItem(STORAGE_KEY) || 'ko'; } catch (e) { return 'ko'; }
+  })();
+
+  var DICT = {
+    ko: {
+      'nav.overview': '개요', 'nav.certlist': '증서 목록', 'nav.expiry': '만료 대기열', 'nav.miscRevenue': '잡이익 원장', 'nav.auditLog': '감사 로그', 'nav.importexport': '가져오기/내보내기',
+      'mr.allTypes': '전체 유형', 'mr.count': '{n}건 (전체 {total}건 중)', 'mr.netBalance': '잡이익 순잔액', 'mr.empty': '잡이익 내역이 없습니다.',
+      'sidebar.footerTitle': 'Gift & Service Certificate', 'sidebar.footerSub': '관리 대시보드',
+
+      'al.searchCertNo': '증서번호 검색', 'al.allActions': '전체 액션', 'al.tsFrom': '작업일시', 'al.count': '{n}건의 기록 (전체 {total}건 중)',
+      'al.col.ts': '일시', 'al.col.certNo': '증서번호', 'al.col.action': '액션', 'al.col.summary': '변경 내용', 'al.col.actor': '담당자',
+      'al.col.count': '건수', 'al.toggleDetail': '상세 펼치기/접기',
+      'operator.label': '담당자', 'operator.promptTitle': '담당자명 입력', 'operator.changeTitle': '담당자 변경',
+      'operator.promptDesc': '이 대시보드에서 수행하는 작업이 감사 로그에 담당자명으로 기록됩니다.',
+      'operator.nameLabel': '이름', 'operator.unset': '담당자 미설정',
+      'al.viewDetail': '상세보기', 'al.emptyState': '조건에 맞는 기록이 없습니다.',
+      'al.action.IMPORT': '가져오기', 'al.action.ISSUE': '발행', 'al.action.USE': '사용', 'al.action.VOID': '취소/환불',
+      'al.action.EXPIRE_RECOGNIZE': '만료 인식', 'al.action.GRACE_USE': 'Grace Use', 'al.action.CORRECT': '수정',
+      'al.action.DELETE': '삭제', 'al.action.UNDO': '되돌리기',
+      'al.diff.created': '신규 생성', 'al.diff.deleted': '삭제됨', 'al.diff.noChange': '변경 없음', 'al.noteLabel': '메모: ',
+
+      'cd.title': '{certNo} 상세', 'cd.currentStatus': '현재 상태', 'cd.historyTitle': '변경 이력', 'cd.noHistory': '기록된 이력이 없습니다.',
+      'cd.miscRevTitle': 'Misc Revenue 내역', 'cd.deletedNotice': '이 증서는 삭제되었습니다. 아래는 삭제 직전 마지막 상태입니다.',
+      'cd.viewDetailTitle': '증서 상세 이력 보기',
+      'cd.field.voidReason': '취소 사유', 'cd.field.refundDate': '환불일', 'cd.field.graceUseDate': 'Grace Use일',
+
+      'common.allCategory': '전체 종류', 'common.allStatus': '전체 상태', 'common.search': '조회', 'common.move': '이동',
+      'common.first': '처음으로', 'common.prev': '이전', 'common.next': '다음', 'common.page': '페이지', 'common.pageJumpHint': '페이지 번호 입력 후 Enter', 'common.save': '저장', 'common.cancel': '취소', 'common.confirm': '확인',
+      'login.title': '부서 공용 로그인', 'login.placeholder': '공용 비밀번호', 'login.button': '로그인', 'login.checking': '확인 중...', 'login.wrong': '비밀번호가 올바르지 않습니다.', 'login.logout': '로그아웃',
+      'common.close': '닫기', 'common.addRow': '+ 행 추가', 'common.noData': '표시할 데이터가 없습니다.', 'common.cases': '건', 'common.refresh': '새로고침',
+
+      'ov.periodStart': '기간 시작', 'ov.periodEnd': '기간 종료',
+      'ov.endingBalance': 'ENDING BALANCE', 'ov.issuedPeriod': '이 기간 발행 (Issued)', 'ov.usedPeriod': '이 기간 사용 (Used)',
+      'ov.expiryQueue': '만료 처리 대기 (Expiry Queue)', 'ov.accountingNeeded': '회계처리 필요',
+      'ov.colCategory': '증서 종류', 'ov.colOpeningAmt': 'Opening 금액', 'ov.colOpeningQty': 'Opening 건수',
+      'ov.colIssuedAmt': 'Issued 금액', 'ov.colIssuedQty': 'Issued 건수', 'ov.colUsedAmt': 'Used 금액', 'ov.colUsedQty': 'Used 건수',
+      'ov.colExpAmt': 'Expired→Rev 금액', 'ov.colExpQty': 'Expired→Rev 건수', 'ov.colVoidAmt': 'Void/Refund 금액', 'ov.colVoidQty': 'Void/Refund 건수',
+      'ov.colEndingAmt': 'Ending 금액', 'ov.colEndingQty': 'Ending 건수', 'ov.total': '합계 (Total)',
+      'ov.grpOpening': 'Opening', 'ov.grpIssued': 'Issued', 'ov.grpUsed': 'Used', 'ov.grpExpired': 'Expired→Rev',
+      'ov.grpVoid': 'Void/Refund', 'ov.grpEnding': 'Ending', 'ov.subAmt': '금액', 'ov.subQty': '건수',
+
+      'cl.newIssue': '+ 새 증서 발행', 'cl.miscRevenue': 'Misc Revenue 원장',
+      'cl.issue.modeSingle': '1장씩 발행', 'cl.issue.modeBulk': '연번 여러 장', 'cl.issue.listLabel': '발행 목록',
+      'cl.otherOption': '기타 (직접 입력)', 'cl.otherPlaceholder': '직접 입력', 'cl.detailGroupLabel': '대분류',
+      'cl.issue.bulkEmptyHint': '위에서 시작 증서번호·수량을 입력하고 "생성"을 누르면 목록이 여기에 표시됩니다. (또는 "행 추가"로 직접 입력)',
+      'cl.searchPlaceholder': '증서번호 / 상세 / Bill No 검색', 'cl.needsReviewOnly': '검토 필요 항목만',
+      'cl.periodBasis': '기간 기준', 'cl.field.issuedDate': '발행일', 'cl.field.expiryDate': '만료일', 'cl.field.usedDate': '사용일',
+      'cl.resultCount': '{n}건 검색됨',
+      'cl.summary.balance': '잔액(필터)', 'cl.summary.issued': '기간내 발행', 'cl.summary.used': '기간내 사용', 'cl.summary.expired': '기간내 만료전환',
+      'cl.col.no': 'No.', 'cl.col.certNo': '증서번호', 'cl.col.category': '종류', 'cl.col.status': '상태', 'cl.col.amountA': '금액 (A)',
+      'cl.col.paymentType': '결제수단', 'cl.col.issuedDate': '발행일', 'cl.col.expiryDate': '만료일', 'cl.col.usedDate': '사용일',
+      'cl.col.outletB': '매출금액 (B)', 'cl.col.miscRevDate': '기타매출등록일', 'cl.col.arC': '잡이익 (C)', 'cl.col.variance': '차액 (A-B-C)',
+      'cl.col.detail': '서비스 포함내역', 'cl.col.billNo': '비고 (영수증번호/객실번호)',
+      'cl.bulkIssue.title': '새 증서 발행', 'cl.bulkIssue.col.category': '종류', 'cl.bulkIssue.col.certNo': '증서번호',
+      'cl.bulkIssue.col.issuedDate': '발행일', 'cl.bulkIssue.col.expiryDate': '만료일', 'cl.bulkIssue.col.amount': '금액',
+      'cl.bulkIssue.col.paymentType': '결제수단', 'cl.bulkIssue.col.detail': '서비스 포함내역', 'cl.bulkIssue.col.seller': '비고',
+      'cl.bulkIssue.register': '전체 등록', 'cl.bulkIssue.needFields': '증서번호와 금액을 입력하세요.',
+      'cl.bulkIssue.duplicateCertNo': '증서번호 "{certNo}"가 이미 존재합니다.', 'cl.bulkIssue.issuedBy': '발행: {name}',
+      'cl.autoResolvedDupNote': '증서번호가 "{certNo}"로 변경되어 중복이 해소됨 (자동으로 검토 필요 해제)',
+      'cl.quickFill.title': '연번 자동 생성', 'cl.quickFill.desc': '시작 증서번호와 수량을 넣으면 연속 번호로 한 번에 생성됩니다 (예: SC010001 + 20장 → SC010001~SC010020). 아래 발행 목록에서 확인·수정한 뒤 "전체 등록"을 누르세요.',
+      'cl.selectAllPage': '이 페이지 전체 선택',
+      'cl.quickFill.qty': '수량', 'cl.quickFill.startNo': '시작 증서번호', 'cl.quickFill.startPlaceholder': '예: SC010001', 'cl.quickFill.generate': '생성',
+      'cl.quickFill.needQty': '수량을 1 이상으로 입력하세요.', 'cl.quickFill.tooMany': '한 번에 최대 500장까지 생성할 수 있습니다.',
+      'cl.quickFill.badNo': '시작 증서번호는 끝이 숫자여야 합니다 (예: SC010001, 000087).', 'cl.quickFill.done': '{n}장 생성됨 ({from} ~ {to}) — 아래에서 확인 후 등록하세요.',
+      'cl.miscRev.title': '잡이익(Misc Income) 원장', 'cl.miscRev.desc': '잡이익 계정으로 오간 내역입니다. ① 만료 인식 시 판매가 100%가 잡이익으로 전환된 기록(잡이익 전환), ② 이후 손님이 만료 증서를 찾아와 Grace Use로 90%를 매출로 되돌린 기록(Grace Use 지급/반제)이 함께 표시됩니다. 상태 열은 각 전환이 아직 되돌릴 수 있는지(발행 후 5년 이내) 또는 확정되었는지를 나타냅니다.',
+      'cl.miscRev.col.date': '일자', 'cl.miscRev.col.certNo': '증서번호', 'cl.miscRev.col.category': '종류', 'cl.miscRev.col.type': '유형',
+      'cl.miscRev.col.amount': '금액', 'cl.miscRev.col.note': '비고', 'cl.miscRev.col.status': '상태',
+      'cl.miscRev.type.writeOff': '잡이익 전환', 'cl.miscRev.type.gracePayout': 'Grace Use 지급', 'cl.miscRev.type.graceReversal': 'Grace Use 반제',
+      'cl.miscRev.status.reversible': '반환 가능', 'cl.miscRev.status.final': '확정 (반환 불가)', 'cl.miscRev.status.done': '반환 완료',
+      'mr.writeOffNote': '유효기간 경과로 잡이익 전환',
+      'cl.toolbar.selected': '{n}건 선택됨', 'cl.toolbar.unlock': '선택 잠금 해제 (인라인 수정)', 'cl.toolbar.markReviewed': '선택 항목 이상없음 처리', 'cl.toolbar.bulkUse': '선택 일괄 사용 처리',
+      'cl.toolbar.bulkVoid': '선택 일괄 취소/환불', 'cl.toolbar.bulkGrace': '선택 일괄 Grace Use 처리', 'cl.toolbar.bulkDelete': '선택 삭제',
+      'cl.toolbar.relock': '다시 잠금 (변경 취소)', 'cl.toolbar.saveEdits': '변경사항 저장 ({n}건)',
+      'cl.relockToast': '잠금 해제된 항목을 다시 잠갔습니다 (변경 내용 취소됨).',
+      'cl.saveConfirm.title': '변경사항 저장 확인', 'cl.saveConfirm.body': '{n}건의 변경사항을 저장합니다.',
+      'cl.saveConfirm.noteLabel': '변경 사유 (선택)', 'cl.saveConfirm.notePlaceholder': '예: 증서번호 오타 수정',
+      'cl.deleteConfirm.title': '선택 항목 삭제 확인', 'cl.deleteConfirm.body': '{n}건을 영구 삭제합니다.',
+      'cl.deleteConfirm.undoNote': '저장 후에는 상단 "되돌리기"로 복구할 수 있습니다.', 'cl.irreversible': '이 작업은 되돌릴 수 없습니다.',
+      'cl.noActiveForUse': '선택된 항목 중 사용 처리 가능한(ACTIVE) 증서가 없습니다.', 'cl.noActiveForVoid': '선택된 항목 중 취소/환불 가능한(ACTIVE) 증서가 없습니다.',
+      'cl.noneForGrace': '선택된 항목 중 Grace Use 가능한(만료 인식된 Service Certificate) 증서가 없습니다.',
+      'cl.bulkUse.title': '{n}건 일괄 사용 처리', 'cl.bulkUse.usedDate': '사용일', 'cl.bulkUse.amountB': '매출금액(B)', 'cl.bulkUse.amountC': '잡이익(C)',
+      'cl.bulkUse.confirm': '일괄 처리',
+      'cl.bulkVoid.title': '{n}건 일괄 취소/환불', 'cl.bulkVoid.misprint': ' 미판매 취소 (Misprint)', 'cl.bulkVoid.refund': ' 판매 후 환불 (Refund)',
+      'cl.bulkVoid.refundDate': '환불일 (환불인 경우)',
+      'cl.bulkGrace.title': '{n}건 일괄 Grace Use 처리', 'cl.bulkGrace.desc': '이미 만료 인식되어 잡이익으로 마감된 증서를 고객이 뒤늦게 사용합니다. 90%가 매출로 반제되고 10%만 잡이익으로 남습니다.',
+      'cl.bulkGrace.date': '사용일',
+      'cl.statusEdit.title': '{certNo} 상태 수정', 'cl.statusEdit.current': '현재 상태: ', 'cl.statusEdit.newStatus': '변경할 상태',
+      'cl.statusEdit.needsAttention': ' — 확인/입력 필요',
+      'cl.useModal.title': '{certNo} 사용 처리', 'cl.useModal.lateNote': '만료 후 사용 — 매출 90% / 잡이익 10%로 자동 분할되었습니다 (수정 가능).',
+      'cl.useModal.usedDate': '사용일', 'cl.useModal.amountB': 'Outlet Posting Amount(B) — 매출금액', 'cl.useModal.amountC': 'AR Posting Amount(C) — 잡이익',
+      'cl.useModal.billNo': 'Check#/Opera# (Bill No.)', 'cl.useModal.confirm': '사용 처리',
+      'cl.verb.save': '저장', 'cl.verb.use': '사용 처리', 'cl.verb.void': '취소/환불', 'cl.verb.grace': 'Grace Use 처리', 'cl.verb.delete': '삭제', 'cl.verb.issue': '발행', 'cl.verb.markReviewed': '이상없음 처리',
+      'cl.noneNeedsReview': '선택된 항목 중 검토 필요 표시가 있는 증서가 없습니다.', 'cl.markReviewed.title': '{n}건 이상없음 처리 확인', 'cl.markReviewed.note': '검토 완료 - 이상없음',
+      'cl.toast.bulkDone': '{n}건 {verb} 완료', 'cl.toast.bulkFail': '{verb} 실패: {msg}', 'cl.toast.noneProcessed': '처리된 항목이 없습니다.',
+      'cl.toast.errorsSuffix': '건 오류',
+
+      'eq.desc': 'Gift Certificate는 만료 시 감액 없이 100% 매출로 마감됩니다. Service Certificate는 만료 후에도 즉시 처리하지 않고 대기하다가, 고객이 그 사이 사용하면 "사용 처리"에서 90%만 매출로 인정되고, 아무도 찾아가지 않은 채 연말이 되면 여기서 100% 잡이익으로 일괄 마감됩니다. 마감 후에도 5년까지는 증서목록의 "Misc Revenue 원장"에서 Grace Use로 90%를 매출로 되돌려줄 수 있습니다.',
+      'eq.asOf': '기준일', 'eq.recognizeSelected': '선택 항목 인식 처리', 'eq.recognizeAll': '전체 연말 일괄 인식 처리 (Year-End)',
+      'eq.searchCertNo': '증서번호 검색', 'eq.expiryDate': '만료일',
+      'eq.count': '{n}건 만료 처리 대기 중 (전체 {total}건 중)', 'eq.emptyState': '조건에 맞는 만료 처리 대기 증서가 없습니다.',
+      'eq.col.certNo': '증서번호', 'eq.col.category': '종류', 'eq.col.amount': '금액', 'eq.col.expiryDate': '만료일', 'eq.col.daysOverdue': '경과일',
+      'eq.col.previewB': '매출 전환 예정 (B)', 'eq.col.previewC': '잡이익 전환 예정 (C)', 'eq.daysUnit': '일',
+      'eq.col.salePrice': '판매가', 'eq.col.issuedDate': '발행일', 'eq.col.conversion': '잡이익 전환 예정', 'eq.col.convRevenue': '매출', 'eq.col.convMisc': '잡이익',
+      'eq.bucket.title': '잡이익 전환 현황 및 향후 만료 예정 (판매가 기준)', 'eq.bucket.category': '종류', 'eq.bucket.monthsPlus': '개월+', 'eq.bucket.monthsUnit': '개월',
+      'eq.bucket.completed': '전환 완료 (올해 누적)', 'eq.bucket.pending': '만료 경과·미전환 (현재)', 'eq.bucket.qtyCol': '건수', 'eq.bucket.amtCol': '금액',
+      'eq.bucket.caption': '전환 완료 = 올해 잡이익으로 마감된 누적 건(전년도 이전은 제외) · 만료 경과·미전환 = 만료일이 지났지만 아직 마감 안 된 건(지금 처리 대상, 아래 목록과 동일) · 0-6개월~24개월+ = 아직 유효하나 해당 기간 안에 만료일이 도래할 예정인 건',
+      'eq.noneSelected': '선택된 항목이 없습니다.', 'eq.noneWaiting': '만료 처리 대기 중인 증서가 없습니다.',
+      'eq.recognizeConfirm.title': '만료 인식 처리 확인', 'eq.recognizeConfirm.body': '{n}건을 만료 인식 처리합니다 (매출/잡이익으로 마감).',
+      'eq.recognizeConfirm.note': '기준일: {date} — 저장 후에는 상단 "되돌리기"로 취소할 수 있습니다.', 'eq.recognizeConfirm.confirm': '인식 처리',
+      'eq.recognizeAllConfirm.title': '연말 일괄 인식 처리 확인', 'eq.recognizeAllConfirm.body': '현재 필터와 무관하게 만료 처리 대기 중인 전체 {n}건을 일괄 인식 처리합니다.',
+      'eq.recognizeAllConfirm.confirm': '일괄 인식 처리',
+      'eq.toast.recognizeDone': '건 인식 처리 완료', 'eq.toast.recognizeAllDone': '건 연말 일괄 인식 처리 완료',
+
+      'ie.uploadTitle': '엑셀 업로드', 'ie.uploadDesc': 'Gift Certificate(.xlsb) 또는 Service Certificate(.xlsx) 원장 파일을 선택하세요.',
+      'ie.importBtn': '가져오기', 'ie.exportTitle': '엑셀 내보내기',
+      'ie.exportDesc': '현재 데이터베이스 상태를 엑셀로 내보냅니다. 원본 서식(색상/조건부서식)은 유지되지 않는 데이터 전용 내보내기입니다.',
+      'ie.exportGift': 'Gift Certificate 내보내기', 'ie.exportService': 'Service Certificate 내보내기', 'ie.exportSpaPulse8': 'SPA & PULSE8 내보내기',
+      'ie.exportGiftDone': 'Gift Certificate 내보내기 완료', 'ie.exportServiceDone': 'Service Certificate 내보내기 완료', 'ie.exportSpaPulse8Done': 'SPA & PULSE8 내보내기 완료', 'ie.exportFail': '내보내기 실패: ',
+      'ie.scope.gift': 'Gift Certificate', 'ie.scope.service': 'Service Certificate (FB & Rooms)', 'ie.scope.spaPulse8': 'SPA & PULSE8',
+      'ie.historyTitle': '가져오기 이력', 'ie.col.fileName': '파일명', 'ie.col.importedAt': '가져온 시각', 'ie.col.rowsImported': '가져온 행', 'ie.col.needsReview': '검토 필요',
+      'ie.undo': '되돌리기',
+      'ie.dangerTitle': '데이터 초기화', 'ie.dangerDesc': '특정 가져오기 회차만 되돌리려면 위 "가져오기 이력" 표의 되돌리기 버튼을 사용하세요. 아래는 종류별/전체 초기화입니다.',
+      'ie.resetGift': 'Gift Certificate 초기화', 'ie.resetService': 'Service Certificate 초기화', 'ie.resetSpaPulse8': 'SPA & PULSE8 초기화', 'ie.resetAll': '전체 데이터 초기화',
+      'ie.selectFile': '파일을 선택하세요.', 'ie.importing': '가져오는 중...', 'ie.importFail': '가져오기 실패', 'ie.importFailPrefix': '가져오기 실패: ',
+      'ie.report.file': '파일: ', 'ie.report.rows': '읽은 행: {read} / 가져온 행: {imported}', 'ie.report.review': '검토 필요: {n}건',
+      'ie.report.warnings': '경고 {n}건 (콘솔 로그 참고)', 'ie.report.done': '건 가져오기 완료',
+      'ie.resetByCat.none': '{label} 데이터가 없습니다.', 'ie.resetByCat.confirmTitle': '{label} 초기화 확인',
+      'ie.resetByCat.confirmBody': '{label} 증서 {n}건이 영구 삭제됩니다 (다른 종류는 영향 없음).',
+      'ie.resetByCat.done': '{label} {n}건 초기화 완료', 'ie.resetByCat.fail': '초기화 실패: ',
+      'ie.resetAll.confirmTitle': '전체 데이터 초기화 확인', 'ie.resetAll.confirmBody': '현재 저장된 모든 증서 데이터({n}건), Misc Revenue 기록, 가져오기 이력이 영구 삭제됩니다.',
+      'ie.resetAll.done': '모든 데이터를 초기화했습니다.',
+      'ie.undoBatch.confirmTitle': '가져오기 되돌리기 확인', 'ie.undoBatch.confirmBody': '"{file}" (가져온 시각 {at}) 에서 가져온 {n}건만 삭제합니다. 다른 회차의 데이터는 영향 없습니다.',
+      'ie.undoBatch.done': '건 되돌리기 완료', 'ie.undoBatch.fail': '되돌리기 실패: ', 'ie.confirmInit': '초기화',
+
+      'undo.recent': '최근 작업: {label}', 'undo.recentWithDetail': '최근 작업: {label} ({detail})', 'undo.andMore': '외 {n}건',
+      'undo.button': '되돌리기', 'undo.dismiss': '작업 완료', 'undo.done': '"{label}" 작업을 되돌렸습니다.', 'undo.none': '되돌릴 작업이 없습니다.',
+      'boot.fail': '초기화 실패: ', 'wf.verb.correct': '항목 수정', 'wf.verb.recognize': '만료 인식 처리', 'wf.verb.flagDup': '검토 표시',
+      'ie.dupCheck.title': '중복 증서번호 검사', 'ie.dupCheck.desc': '전체 데이터에서 같은 증서번호를 가진 항목을 찾아 검토 필요로 표시합니다. 증서목록에서 "검토 필요 항목만"으로 필터링해 확인할 수 있습니다.',
+      'ie.dupCheck.button': '중복 증서번호 검토 표시', 'ie.dupCheck.none': '중복된 증서번호가 없습니다.',
+      'ie.dupCheck.done': '증서번호 중복 {groups}건, 총 {n}개 항목을 검토 필요로 표시했습니다.',
+      'ie.reclassify.desc': '사용된 증서의 상태를 현재 기준으로 재정리합니다. ① 잘못 만료전환으로 잡힌 정상 사용(매출 B 있음·전환메모 없음)을 되돌리고, ② 잡이익(C)이 있고 사용일이 유효기간보다 늦은 건은 GRACE_USED, 그 외 사용은 USED로 구분합니다(다시 가져오기 불필요, 되돌리기 가능).',
+      'ie.reclassify.button': '잘못 분류된 만료건 정리', 'ie.reclassify.none': '잘못 분류된 만료건이 없습니다.',
+      'ie.reclassify.done': '{n}건 정리 완료 (USED {used}건 · GRACE_USED {grace}건).', 'ie.reclassify.note': '사용 상태 재분류 (잡이익 있고 만료 후 사용 → GRACE_USED, 그 외 → USED)', 'ie.reclassify.verb': '재분류',
+    },
+    en: {
+      'nav.overview': 'Overview', 'nav.certlist': 'Certificate List', 'nav.expiry': 'Expiry Queue', 'nav.miscRevenue': 'Misc Income', 'nav.auditLog': 'Audit Log', 'nav.importexport': 'Import / Export',
+      'mr.allTypes': 'All Types', 'mr.count': '{n} of {total}', 'mr.netBalance': 'Net Misc Income', 'mr.empty': 'No misc income entries.',
+      'sidebar.footerTitle': 'Gift & Service Certificate', 'sidebar.footerSub': 'Management Dashboard',
+
+      'al.searchCertNo': 'Search Certificate No.', 'al.allActions': 'All Actions', 'al.tsFrom': 'Timestamp', 'al.count': '{n} entries (of {total} total)',
+      'al.col.ts': 'Timestamp', 'al.col.certNo': 'Certificate No.', 'al.col.action': 'Action', 'al.col.summary': 'Change Summary', 'al.col.actor': 'Operator',
+      'al.col.count': 'Count', 'al.toggleDetail': 'Expand/collapse detail',
+      'operator.label': 'Operator', 'operator.promptTitle': 'Enter Your Name', 'operator.changeTitle': 'Change Operator',
+      'operator.promptDesc': 'Actions you take in this dashboard are recorded in the audit log under this name.',
+      'operator.nameLabel': 'Name', 'operator.unset': 'No operator set',
+      'al.viewDetail': 'View Detail', 'al.emptyState': 'No log entries match the filters.',
+      'al.action.IMPORT': 'Import', 'al.action.ISSUE': 'Issue', 'al.action.USE': 'Use', 'al.action.VOID': 'Void/Refund',
+      'al.action.EXPIRE_RECOGNIZE': 'Expire Recognize', 'al.action.GRACE_USE': 'Grace Use', 'al.action.CORRECT': 'Correct',
+      'al.action.DELETE': 'Delete', 'al.action.UNDO': 'Undo',
+      'al.diff.created': 'Created', 'al.diff.deleted': 'Deleted', 'al.diff.noChange': 'No changes', 'al.noteLabel': 'Note: ',
+
+      'cd.title': '{certNo} Detail', 'cd.currentStatus': 'Current Status', 'cd.historyTitle': 'History', 'cd.noHistory': 'No recorded history.',
+      'cd.miscRevTitle': 'Misc Revenue Entries', 'cd.deletedNotice': 'This certificate has been deleted. Shown below is its last state before deletion.',
+      'cd.viewDetailTitle': 'View certificate detail/history',
+      'cd.field.voidReason': 'Void Reason', 'cd.field.refundDate': 'Refund Date', 'cd.field.graceUseDate': 'Grace Use Date',
+
+      'common.allCategory': 'All Categories', 'common.allStatus': 'All Statuses', 'common.search': 'Search', 'common.move': 'Go',
+      'common.first': 'First', 'common.prev': 'Prev', 'common.next': 'Next', 'common.page': 'Page', 'common.pageJumpHint': 'Type a page number, then Enter', 'common.save': 'Save', 'common.cancel': 'Cancel', 'common.confirm': 'Confirm',
+      'login.title': 'Shared team login', 'login.placeholder': 'Shared password', 'login.button': 'Log in', 'login.checking': 'Checking...', 'login.wrong': 'Incorrect password.', 'login.logout': 'Log out',
+      'common.close': 'Close', 'common.addRow': '+ Add Row', 'common.noData': 'No data to display.', 'common.cases': '', 'common.refresh': 'Refresh',
+
+      'ov.periodStart': 'Period Start', 'ov.periodEnd': 'Period End',
+      'ov.endingBalance': 'ENDING BALANCE', 'ov.issuedPeriod': 'Issued (this period)', 'ov.usedPeriod': 'Used (this period)',
+      'ov.expiryQueue': 'Expiry Queue', 'ov.accountingNeeded': 'Accounting action needed',
+      'ov.colCategory': 'Category', 'ov.colOpeningAmt': 'Opening Amt', 'ov.colOpeningQty': 'Opening Qty',
+      'ov.colIssuedAmt': 'Issued Amt', 'ov.colIssuedQty': 'Issued Qty', 'ov.colUsedAmt': 'Used Amt', 'ov.colUsedQty': 'Used Qty',
+      'ov.colExpAmt': 'Expired→Rev Amt', 'ov.colExpQty': 'Expired→Rev Qty', 'ov.colVoidAmt': 'Void/Refund Amt', 'ov.colVoidQty': 'Void/Refund Qty',
+      'ov.colEndingAmt': 'Ending Amt', 'ov.colEndingQty': 'Ending Qty', 'ov.total': 'Total',
+      'ov.grpOpening': 'Opening', 'ov.grpIssued': 'Issued', 'ov.grpUsed': 'Used', 'ov.grpExpired': 'Expired→Rev',
+      'ov.grpVoid': 'Void/Refund', 'ov.grpEnding': 'Ending', 'ov.subAmt': 'Amt', 'ov.subQty': 'Qty',
+
+      'cl.newIssue': '+ New Certificate', 'cl.miscRevenue': 'Misc Revenue Ledger',
+      'cl.issue.modeSingle': 'One at a time', 'cl.issue.modeBulk': 'Numbered batch', 'cl.issue.listLabel': 'Issue list',
+      'cl.otherOption': 'Other (type in)', 'cl.otherPlaceholder': 'Type a value', 'cl.detailGroupLabel': 'Group',
+      'cl.issue.bulkEmptyHint': 'Enter a start number and quantity above and click "Generate" to fill this list. (Or use "Add row" to type manually.)',
+      'cl.searchPlaceholder': 'Search Certificate No. / Detail / Bill No.', 'cl.needsReviewOnly': 'Needs review only',
+      'cl.periodBasis': 'Date field', 'cl.field.issuedDate': 'Issued Date', 'cl.field.expiryDate': 'Expiry Date', 'cl.field.usedDate': 'Used Date',
+      'cl.resultCount': '{n} results',
+      'cl.summary.balance': 'Balance (filtered)', 'cl.summary.issued': 'Issued (period)', 'cl.summary.used': 'Used (period)', 'cl.summary.expired': 'Expired→Rev (period)',
+      'cl.col.no': 'No.', 'cl.col.certNo': 'Certificate No.', 'cl.col.category': 'Category', 'cl.col.status': 'Status', 'cl.col.amountA': 'Amount (A)',
+      'cl.col.paymentType': 'Payment', 'cl.col.issuedDate': 'Issued', 'cl.col.expiryDate': 'Expiry', 'cl.col.usedDate': 'Used',
+      'cl.col.outletB': 'Outlet Posting (B)', 'cl.col.miscRevDate': 'Misc Rev Posting Date', 'cl.col.arC': 'AR Posting (C)', 'cl.col.variance': 'Variance (A-B-C)',
+      'cl.col.detail': 'Detail', 'cl.col.billNo': 'Note (Bill No. / Room No.)',
+      'cl.bulkIssue.title': 'New Certificate', 'cl.bulkIssue.col.category': 'Category', 'cl.bulkIssue.col.certNo': 'Certificate No.',
+      'cl.bulkIssue.col.issuedDate': 'Issued Date', 'cl.bulkIssue.col.expiryDate': 'Expiry Date', 'cl.bulkIssue.col.amount': 'Amount',
+      'cl.bulkIssue.col.paymentType': 'Payment', 'cl.bulkIssue.col.detail': 'Service Included', 'cl.bulkIssue.col.seller': 'Note',
+      'cl.bulkIssue.register': 'Register All', 'cl.bulkIssue.needFields': 'Enter a Certificate No. and Amount.',
+      'cl.bulkIssue.duplicateCertNo': 'Certificate No. "{certNo}" already exists.', 'cl.bulkIssue.issuedBy': 'Issued by {name}',
+      'cl.autoResolvedDupNote': 'Duplicate resolved — the other record was renamed to "{certNo}" (needs-review auto-cleared)',
+      'cl.quickFill.title': 'Auto-number', 'cl.quickFill.desc': 'Enter a start number and quantity to generate consecutive numbers at once (e.g. SC010001 + 20 → SC010001–SC010020). Review/edit in the issue list below, then click "Register All".',
+      'cl.selectAllPage': 'Select all on this page',
+      'cl.quickFill.qty': 'Qty', 'cl.quickFill.startNo': 'Start Cert No.', 'cl.quickFill.startPlaceholder': 'e.g. SC010001', 'cl.quickFill.generate': 'Generate',
+      'cl.quickFill.needQty': 'Enter a quantity of 1 or more.', 'cl.quickFill.tooMany': 'Up to 500 can be generated at once.',
+      'cl.quickFill.badNo': 'The start number must end in digits (e.g. SC010001, 000087).', 'cl.quickFill.done': 'Generated {n} ({from} – {to}) — review below, then register.',
+      'cl.miscRev.title': 'Misc Income Ledger', 'cl.miscRev.desc': 'Movements in and out of the misc income account: (1) when an expired certificate is recognized, 100% of its sale price is booked to misc income (write-off); (2) when a customer later redeems an expired certificate via Grace Use, 90% is released back to real revenue (payout/reversal). The Status column shows whether each conversion is still reversible (within 5 years of issue) or final.',
+      'cl.miscRev.col.date': 'Date', 'cl.miscRev.col.certNo': 'Certificate No.', 'cl.miscRev.col.category': 'Category', 'cl.miscRev.col.type': 'Type',
+      'cl.miscRev.col.amount': 'Amount', 'cl.miscRev.col.note': 'Note', 'cl.miscRev.col.status': 'Status',
+      'cl.miscRev.type.writeOff': 'Misc Income Conversion', 'cl.miscRev.type.gracePayout': 'Grace Use Payout', 'cl.miscRev.type.graceReversal': 'Grace Use Reversal',
+      'cl.miscRev.status.reversible': 'Reversible', 'cl.miscRev.status.final': 'Final (not reversible)', 'cl.miscRev.status.done': 'Reversed',
+      'mr.writeOffNote': 'Converted to misc income after validity period elapsed',
+      'cl.toolbar.selected': '{n} selected', 'cl.toolbar.unlock': 'Unlock Selected (inline edit)', 'cl.toolbar.markReviewed': 'Mark Selected No Issue', 'cl.toolbar.bulkUse': 'Bulk Use Selected',
+      'cl.toolbar.bulkVoid': 'Bulk Void/Refund Selected', 'cl.toolbar.bulkGrace': 'Bulk Grace Use Selected', 'cl.toolbar.bulkDelete': 'Delete Selected',
+      'cl.toolbar.relock': 'Re-lock (discard changes)', 'cl.toolbar.saveEdits': 'Save Changes ({n})',
+      'cl.relockToast': 'Unlocked rows have been re-locked (changes discarded).',
+      'cl.saveConfirm.title': 'Confirm Save', 'cl.saveConfirm.body': 'Save changes to {n} record(s).',
+      'cl.saveConfirm.noteLabel': 'Change Reason (optional)', 'cl.saveConfirm.notePlaceholder': 'e.g. Fixed certificate number typo',
+      'cl.deleteConfirm.title': 'Confirm Delete', 'cl.deleteConfirm.body': 'Permanently delete {n} record(s).',
+      'cl.deleteConfirm.undoNote': 'Once saved, use "Undo" at the top to restore.', 'cl.irreversible': 'This action cannot be undone.',
+      'cl.noActiveForUse': 'None of the selected records are eligible for Use (ACTIVE only).', 'cl.noActiveForVoid': 'None of the selected records are eligible for Void/Refund (ACTIVE only).',
+      'cl.noneForGrace': 'None of the selected records are eligible for Grace Use (must be EXPIRED_RECOGNIZED Service Certificates).',
+      'cl.bulkUse.title': 'Bulk Use ({n})', 'cl.bulkUse.usedDate': 'Used Date', 'cl.bulkUse.amountB': 'Outlet Posting (B)', 'cl.bulkUse.amountC': 'AR Posting (C)',
+      'cl.bulkUse.confirm': 'Process',
+      'cl.bulkVoid.title': 'Bulk Void/Refund ({n})', 'cl.bulkVoid.misprint': ' Not sold (Misprint)', 'cl.bulkVoid.refund': ' Sold then refunded (Refund)',
+      'cl.bulkVoid.refundDate': 'Refund Date (if refund)',
+      'cl.bulkGrace.title': 'Bulk Grace Use ({n})', 'cl.bulkGrace.desc': 'The customer is using a certificate that was already written off as misc income. 90% is released back to revenue, 10% remains as misc income.',
+      'cl.bulkGrace.date': 'Used Date',
+      'cl.statusEdit.title': 'Edit Status — {certNo}', 'cl.statusEdit.current': 'Current status: ', 'cl.statusEdit.newStatus': 'New status',
+      'cl.statusEdit.needsAttention': ' — please confirm/fill in',
+      'cl.useModal.title': 'Use — {certNo}', 'cl.useModal.lateNote': 'Used after expiry — auto-split to 90% revenue / 10% misc income (editable).',
+      'cl.useModal.usedDate': 'Used Date', 'cl.useModal.amountB': 'Outlet Posting Amount (B)', 'cl.useModal.amountC': 'AR Posting Amount (C)',
+      'cl.useModal.billNo': 'Check#/Opera# (Bill No.)', 'cl.useModal.confirm': 'Process',
+      'cl.verb.save': 'Save', 'cl.verb.use': 'Use', 'cl.verb.void': 'Void/Refund', 'cl.verb.grace': 'Grace Use', 'cl.verb.delete': 'Delete', 'cl.verb.issue': 'Issue', 'cl.verb.markReviewed': 'Mark No Issue',
+      'cl.noneNeedsReview': 'None of the selected records are flagged for review.', 'cl.markReviewed.title': 'Confirm Mark No Issue ({n})', 'cl.markReviewed.note': 'Reviewed - no issue',
+      'cl.toast.bulkDone': '{verb} complete — {n} record(s)', 'cl.toast.bulkFail': '{verb} failed: {msg}', 'cl.toast.noneProcessed': 'No items were processed.',
+      'cl.toast.errorsSuffix': ' error(s)',
+
+      'eq.desc': 'Gift Certificates write off at 100% straight to revenue with no reduction on expiry. Service Certificates wait after expiry instead of processing immediately — if a customer uses one in that window, "Use" recognizes only 90% as revenue; if nobody claims it, it is written off here at year-end at 100% misc income. Even after write-off, up to 5 years later you can release 90% back to revenue via Grace Use in the Certificate List\'s "Misc Revenue Ledger".',
+      'eq.asOf': 'As of', 'eq.recognizeSelected': 'Recognize Selected', 'eq.recognizeAll': 'Bulk Year-End Recognition',
+      'eq.searchCertNo': 'Search Certificate No.', 'eq.expiryDate': 'Expiry Date',
+      'eq.count': '{n} pending write-off (of {total} total)', 'eq.emptyState': 'No pending write-offs match the filters.',
+      'eq.col.certNo': 'Certificate No.', 'eq.col.category': 'Category', 'eq.col.amount': 'Amount', 'eq.col.expiryDate': 'Expiry Date', 'eq.col.daysOverdue': 'Days Overdue',
+      'eq.col.previewB': 'Preview Revenue (B)', 'eq.col.previewC': 'Preview Misc Income (C)', 'eq.daysUnit': 'd',
+      'eq.col.salePrice': 'Sale Price', 'eq.col.issuedDate': 'Issued Date', 'eq.col.conversion': 'Expected Misc Income', 'eq.col.convRevenue': 'Revenue', 'eq.col.convMisc': 'Misc Income',
+      'eq.bucket.title': 'Misc Income Conversion Status & Upcoming Expiries (by sale price)', 'eq.bucket.category': 'Category', 'eq.bucket.monthsPlus': 'mo+', 'eq.bucket.monthsUnit': 'mo',
+      'eq.bucket.completed': 'Converted (YTD)', 'eq.bucket.pending': 'Past Expiry · Not Converted (now)', 'eq.bucket.qtyCol': 'Qty', 'eq.bucket.amtCol': 'Amount',
+      'eq.bucket.caption': 'Converted = certs closed to misc income THIS YEAR (prior years excluded) · Past Expiry·Not Converted = past their expiry date but not yet closed (action needed now, same as the list below) · 0-6mo–24mo+ = still valid, but their expiry date falls within that future window',
+      'eq.noneSelected': 'No items selected.', 'eq.noneWaiting': 'No certificates pending write-off.',
+      'eq.recognizeConfirm.title': 'Confirm Recognition', 'eq.recognizeConfirm.body': 'Recognize {n} record(s) (post to revenue/misc income).',
+      'eq.recognizeConfirm.note': 'As of: {date} — once saved, use "Undo" at the top to reverse.', 'eq.recognizeConfirm.confirm': 'Recognize',
+      'eq.recognizeAllConfirm.title': 'Confirm Bulk Year-End Recognition', 'eq.recognizeAllConfirm.body': 'Recognize all {n} record(s) pending write-off, regardless of current filters.',
+      'eq.recognizeAllConfirm.confirm': 'Bulk Recognize',
+      'eq.toast.recognizeDone': ' record(s) recognized', 'eq.toast.recognizeAllDone': ' record(s) recognized (year-end bulk)',
+
+      'ie.uploadTitle': 'Upload Excel', 'ie.uploadDesc': 'Select a Gift Certificate (.xlsb) or Service Certificate (.xlsx) ledger file.',
+      'ie.importBtn': 'Import', 'ie.exportTitle': 'Export Excel',
+      'ie.exportDesc': 'Exports the current database state to Excel. Data-only export — original formatting (colors/conditional formatting) is not preserved.',
+      'ie.exportGift': 'Export Gift Certificate', 'ie.exportService': 'Export Service Certificate', 'ie.exportSpaPulse8': 'Export SPA & PULSE8',
+      'ie.exportGiftDone': 'Gift Certificate export complete', 'ie.exportServiceDone': 'Service Certificate export complete', 'ie.exportSpaPulse8Done': 'SPA & PULSE8 export complete', 'ie.exportFail': 'Export failed: ',
+      'ie.scope.gift': 'Gift Certificate', 'ie.scope.service': 'Service Certificate (FB & Rooms)', 'ie.scope.spaPulse8': 'SPA & PULSE8',
+      'ie.historyTitle': 'Import History', 'ie.col.fileName': 'File', 'ie.col.importedAt': 'Imported At', 'ie.col.rowsImported': 'Rows Imported', 'ie.col.needsReview': 'Needs Review',
+      'ie.undo': 'Undo',
+      'ie.dangerTitle': 'Reset Data', 'ie.dangerDesc': 'To undo just one specific import, use the Undo button in the Import History table above. Below are category-wide/full resets.',
+      'ie.resetGift': 'Reset Gift Certificate', 'ie.resetService': 'Reset Service Certificate', 'ie.resetSpaPulse8': 'Reset SPA & PULSE8', 'ie.resetAll': 'Reset All Data',
+      'ie.selectFile': 'Please select a file.', 'ie.importing': 'Importing...', 'ie.importFail': 'Import failed', 'ie.importFailPrefix': 'Import failed: ',
+      'ie.report.file': 'File: ', 'ie.report.rows': 'Rows read: {read} / Imported: {imported}', 'ie.report.review': 'Needs review: {n}',
+      'ie.report.warnings': '{n} warning(s) (see console log)', 'ie.report.done': ' record(s) imported',
+      'ie.resetByCat.none': '{label} has no data.', 'ie.resetByCat.confirmTitle': '{label} Reset Confirmation',
+      'ie.resetByCat.confirmBody': '{n} {label} record(s) will be permanently deleted (other categories unaffected).',
+      'ie.resetByCat.done': '{n} {label} record(s) reset', 'ie.resetByCat.fail': 'Reset failed: ',
+      'ie.resetAll.confirmTitle': 'Confirm Full Reset', 'ie.resetAll.confirmBody': 'All currently stored certificate data ({n}), Misc Revenue records, and import history will be permanently deleted.',
+      'ie.resetAll.done': 'All data has been reset.',
+      'ie.undoBatch.confirmTitle': 'Confirm Undo Import', 'ie.undoBatch.confirmBody': 'Deletes only the {n} record(s) imported from "{file}" (imported at {at}). Other import runs are unaffected.',
+      'ie.undoBatch.done': ' record(s) undone', 'ie.undoBatch.fail': 'Undo failed: ', 'ie.confirmInit': 'Reset',
+
+      'undo.recent': 'Last action: {label}', 'undo.recentWithDetail': 'Last action: {label} ({detail})', 'undo.andMore': '+{n} more',
+      'undo.button': 'Undo', 'undo.dismiss': 'Mark Done', 'undo.done': 'Undid "{label}".', 'undo.none': 'Nothing to undo.',
+      'boot.fail': 'Initialization failed: ', 'wf.verb.correct': 'Edit', 'wf.verb.recognize': 'Recognize Expiry', 'wf.verb.flagDup': 'Flag for Review',
+      'ie.dupCheck.title': 'Duplicate Certificate No. Check', 'ie.dupCheck.desc': 'Scans all data for certificate numbers shared by more than one record and flags them for review — check Certificate List with "Needs review only" to see them.',
+      'ie.dupCheck.button': 'Flag Duplicate Cert. Numbers', 'ie.dupCheck.none': 'No duplicate certificate numbers found.',
+      'ie.dupCheck.done': 'Flagged {n} record(s) for review ({groups} duplicate certificate number(s)).',
+      'ie.reclassify.desc': 'Re-aligns every redeemed record\'s status with the current rules (no re-import needed): (1) records wrongly stored as expiry write-offs (real outlet revenue B posted, no recognition note) are restored to redemptions, and (2) USED vs GRACE_USED is set by timing — a redemption with a misc-income penalty (C > 0) used AFTER expiry becomes GRACE_USED, otherwise USED. Undoable.',
+      'ie.reclassify.button': 'Fix misclassified expiries', 'ie.reclassify.none': 'No misclassified expiries found.',
+      'ie.reclassify.done': 'Corrected {n} record(s) ({used} USED · {grace} GRACE_USED).', 'ie.reclassify.note': 'Redemption status reclassified (C posted & used after expiry -> GRACE_USED, else USED)', 'ie.reclassify.verb': 'reclassify',
+    }
+  };
+
+  function t(key, vars) {
+    var table = DICT[lang] || DICT.ko;
+    var str = table[key];
+    if (str === undefined) str = (DICT.ko[key] !== undefined) ? DICT.ko[key] : key;
+    if (vars) {
+      Object.keys(vars).forEach(function (k) {
+        str = str.split('{' + k + '}').join(vars[k]);
+      });
+    }
+    return str;
+  }
+
+  function getLang() { return lang; }
+
+  function setLang(newLang) {
+    if (newLang !== 'ko' && newLang !== 'en') return;
+    lang = newLang;
+    try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
+    document.documentElement.lang = lang;
+    applyStatic();
+    if (CertApp.router) CertApp.router.refresh();
+  }
+
+  // Translates static (non-view) HTML marked with data-i18n, e.g. the sidebar nav labels
+  // that live directly in index.html rather than being rebuilt by a view's render().
+  function applyStatic() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('.lang-toggle button').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+    if (CertApp.ui && CertApp.ui.renderOperatorChip) CertApp.ui.renderOperatorChip();
+  }
+
+  return { t: t, getLang: getLang, setLang: setLang, applyStatic: applyStatic };
+})();

@@ -1,0 +1,7 @@
+# OS / editor cruft
+Thumbs.db
+.DS_Store
+*~
+
+# deployment artifacts
+*.zip

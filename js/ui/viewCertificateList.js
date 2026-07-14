@@ -271,14 +271,14 @@ CertApp.viewCertificateList = (function () {
     var today = CertApp.today();
     var category = Object.keys(CertApp.CATEGORY)[0];
     return { category: category, certificateNo: '', issuedDate: today, expiryDate: defaultExpiryFor(category, today),
-      amountA: defaultAmountFor(category), paymentType: '', certificateDetail: '', sellerOperaId: '' };
+      amountA: defaultAmountFor(category), paymentType: '', certificateDetail: '', sellerOperaId: '', discountReceiptNote: '' };
   }
 
   function newQuickFill() {
     var today = CertApp.today();
     var category = Object.keys(CertApp.CATEGORY)[0];
     return { category: category, startNo: '', qty: 20, amountA: defaultAmountFor(category),
-      issuedDate: today, paymentType: '', certificateDetail: '', note: '' };
+      issuedDate: today, paymentType: '', certificateDetail: '', note: '', discountReceiptNote: '' };
   }
 
   function toggleBulkIssuePanel() {
@@ -436,7 +436,8 @@ CertApp.viewCertificateList = (function () {
         category: q.category, certificateNo: incrementCertNo(startNo, i),
         issuedDate: q.issuedDate, expiryDate: defaultExpiryFor(q.category, q.issuedDate),
         amountA: q.amountA, paymentType: q.paymentType,
-        certificateDetail: q.certificateDetail || '', _detailGroup: q._detailGroup, sellerOperaId: q.note || ''
+        certificateDetail: q.certificateDetail || '', _detailGroup: q._detailGroup, sellerOperaId: q.note || '',
+        discountReceiptNote: q.discountReceiptNote || ''
       });
     }
     renderBulkIssuePanel();
@@ -505,6 +506,7 @@ CertApp.viewCertificateList = (function () {
     var paymentField = selectWithOther(PAYMENT_OPTIONS, q.paymentType, function (v) { q.paymentType = v; });
     var detailField = detailSelect(q.category, q.certificateDetail, function (v, group) { q.certificateDetail = v; if (group) q._detailGroup = group; });
     var noteInput = ui.el('input', { type: 'text', value: q.note, style: 'width:120px', oninput: function (e) { q.note = e.target.value; } });
+    var discountInput = ui.el('input', { type: 'text', value: q.discountReceiptNote, style: 'width:120px', oninput: function (e) { q.discountReceiptNote = e.target.value; } });
 
     function labeled(labelKey, el) { return ui.el('label', { class: 'quickfill-field' }, [ui.el('span', { text: t(labelKey) }), el]); }
     var certNoField = ui.el('label', { class: 'quickfill-field' }, [
@@ -524,6 +526,7 @@ CertApp.viewCertificateList = (function () {
         labeled('cl.bulkIssue.col.paymentType', paymentField),
         labeled('cl.bulkIssue.col.detail', detailField),
         labeled('cl.bulkIssue.col.seller', noteInput),
+        labeled('cl.col.discountReceipt', discountInput),
         ui.el('button', { class: 'btn btn-primary', text: t('cl.quickFill.generate'), onclick: onQuickGenerate })
       ])
     ]);
@@ -548,8 +551,9 @@ CertApp.viewCertificateList = (function () {
     var paymentField = selectWithOther(PAYMENT_OPTIONS, row.paymentType, function (v) { row.paymentType = v; });
     var detailField = detailSelect(row.category, row.certificateDetail, function (v, group) { row.certificateDetail = v; if (group) row._detailGroup = group; });
     var sellerInput = ui.el('input', { type: 'text', value: row.sellerOperaId, oninput: function (e) { row.sellerOperaId = e.target.value; } });
+    var discountInput = ui.el('input', { type: 'text', value: row.discountReceiptNote, oninput: function (e) { row.discountReceiptNote = e.target.value; } });
     var removeBtn = ui.el('button', { class: 'btn', text: '✕', onclick: function () { bulkIssueRows.splice(idx, 1); renderBulkIssuePanel(); } });
-    return ui.el('tr', {}, [catSelect, certNoInput, amountField, issuedInput, expiryInput, paymentField, detailField, sellerInput, removeBtn]
+    return ui.el('tr', {}, [catSelect, certNoInput, amountField, issuedInput, expiryInput, paymentField, detailField, sellerInput, discountInput, removeBtn]
       .map(function (el) { return ui.el('td', {}, [el]); }));
   }
 
@@ -574,7 +578,7 @@ CertApp.viewCertificateList = (function () {
 
     var headerLabels = [
       t('cl.bulkIssue.col.category'), t('cl.bulkIssue.col.certNo'), t('cl.bulkIssue.col.amount'), t('cl.bulkIssue.col.issuedDate'),
-      t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.bulkIssue.col.detail'), t('cl.bulkIssue.col.seller'), ''
+      t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.bulkIssue.col.detail'), t('cl.bulkIssue.col.seller'), t('cl.col.discountReceipt'), ''
     ];
     var thead = ui.el('thead', {}, [ui.el('tr', {}, headerLabels.map(function (h) { return ui.el('th', { text: h }); }))]);
     var tbody = ui.el('tbody', {}, bulkIssueRows.map(renderIssueRow));
@@ -610,7 +614,8 @@ CertApp.viewCertificateList = (function () {
       return {
         category: row.category, certificateNo: row.certificateNo, issuedDate: row.issuedDate,
         expiryDate: row.expiryDate, amountA: Number(row.amountA), paymentType: row.paymentType || null,
-        certificateDetail: row.certificateDetail || null, sellerOperaId: row.sellerOperaId || null
+        certificateDetail: row.certificateDetail || null, sellerOperaId: row.sellerOperaId || null,
+        discountReceiptNote: row.discountReceiptNote || null
       };
     });
     CertApp.certificateWorkflow.bulkIssueCertificates(inputs).then(function (result) {
@@ -1053,7 +1058,8 @@ CertApp.viewCertificateList = (function () {
         return ui.formatCurrency(a - b - c);
       } },
       { key: 'certificateDetail', label: t('cl.col.detail'), width: 150, format: function (v, r) { return editableText(r, 'certificateDetail'); } },
-      { key: 'billNo', label: t('cl.col.billNo'), width: 180, format: function (v, r) { return editableText(r, 'billNo'); } }
+      { key: 'billNo', label: t('cl.col.billNo'), width: 150, align: 'left', format: function (v, r) { return editableText(r, 'billNo'); } },
+      { key: 'discountReceiptNote', label: t('cl.col.discountReceipt'), width: 140, align: 'left', format: function (v, r) { return editableText(r, 'discountReceiptNote'); } }
     ];
 
     ui.renderTable(document.getElementById('cl-table-wrap'), columns, displayRows);

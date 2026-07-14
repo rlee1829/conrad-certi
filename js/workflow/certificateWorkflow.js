@@ -236,6 +236,9 @@ CertApp.certificateWorkflow = (function () {
       voidReason: null,
       refundDate: null,
       graceUseDate: null,
+      mateApprovalNo: null,
+      // Second free-text note (right of billNo): discount applied / cash-receipt issued, etc.
+      discountReceiptNote: input.discountReceiptNote || null,
       needsReview: false,
       sourceRowRef: null,
       createdAt: now,
@@ -486,6 +489,7 @@ CertApp.certificateWorkflow = (function () {
     if (patch.graceUseDate !== undefined) rec.graceUseDate = patch.graceUseDate;
     if (patch.certificateDetail !== undefined) rec.certificateDetail = patch.certificateDetail;
     if (patch.billNo !== undefined) rec.billNo = patch.billNo;
+    if (patch.discountReceiptNote !== undefined) rec.discountReceiptNote = patch.discountReceiptNote;
     rec.needsReview = false;
 
     // Renaming this record's certificateNo may have resolved a duplicate — if exactly one

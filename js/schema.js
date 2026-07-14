@@ -133,8 +133,8 @@ CertApp.CERTIFICATE_FIELDS = [
   'id', 'category', 'certificateNo', 'issuedDate', 'expiryDate', 'status', 'dc',
   'amountA', 'paymentType', 'certificateDetail', 'usedDate', 'outletPostingAmountB',
   'miscRevPostingDate', 'arPostingAmountC', 'billNo', 'sellerOperaId',
-  'voidReason', 'refundDate', 'graceUseDate', 'mateApprovalNo', 'needsReview', 'sourceRowRef',
-  'createdAt', 'updatedAt'
+  'voidReason', 'refundDate', 'graceUseDate', 'mateApprovalNo', 'discountReceiptNote',
+  'needsReview', 'sourceRowRef', 'createdAt', 'updatedAt'
 ];
 
 CertApp.uuid = function () {

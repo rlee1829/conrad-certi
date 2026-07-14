@@ -53,6 +53,25 @@ CertApp.ui.openCertificateDetail = function (certificateId) {
       ui.el('span', { class: 'muted', text: CertApp.CATEGORY_LABEL[rec.category] || rec.category })
     ]));
 
+    // "유효기간 연장" action — available whenever the certificate is still ACTIVE, which
+    // includes EXPIRED (past expiry but not yet converted to misc income). Deliberately NOT
+    // shown for USED / VOID / EXPIRED_RECOGNIZED (already-closed) records; extendExpiry also
+    // guards this. Lets an expired cert browsed from the Certificate List be extended here,
+    // not just from the Expiry Queue.
+    if (!isDeleted && rec.status === CertApp.STATUS.ACTIVE) {
+      body.push(ui.el('div', { class: 'cd-actions' }, [
+        ui.el('button', {
+          class: 'btn btn-primary btn-small', text: t('eq.extend.button'),
+          onclick: function () {
+            ui.openExtendModal(rec, function () {
+              ui.openCertificateDetail(certificateId); // reopen with the new expiry date
+              CertApp.router.refresh();
+            });
+          }
+        })
+      ]));
+    }
+
     body.push(ui.el('div', { class: 'cert-detail-grid' }, [
       fieldCell('cl.col.amountA', ui.formatCurrency(rec.amountA)),
       fieldCell('cl.col.paymentType', rec.paymentType),
@@ -66,6 +85,7 @@ CertApp.ui.openCertificateDetail = function (certificateId) {
       fieldCell('cd.field.graceUseDate', rec.graceUseDate),
       fieldCell('cd.field.mateApprovalNo', rec.mateApprovalNo),
       fieldCell('cl.col.billNo', rec.billNo),
+      fieldCell('cl.col.discountReceipt', rec.discountReceiptNote),
       fieldCell('cl.col.detail', rec.certificateDetail)
     ]));
 

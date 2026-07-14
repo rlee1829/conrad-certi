@@ -103,15 +103,15 @@ body {
 
 /* ---------- main content ---------- */
 
-#view-container { flex: 1; overflow-y: auto; padding: 16px 16px; }
+#view-container { flex: 1; overflow-y: auto; padding: 14px 10px; }
 
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  padding: 20px 22px;
-  margin-bottom: 16px;
+  padding: 16px 16px;
+  margin-bottom: 14px;
 }
 .panel h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: -.1px; }
 
@@ -127,8 +127,8 @@ body {
 
 /* Certificate List: dense rows so a full page (20) fits the viewport height without a vertical
    scrollbar; the list still scrolls horizontally for its many columns. */
-.view-certlist .data-table th, .view-certlist .data-table td { padding: 4px 8px; font-size: 11.5px; }
-.view-certlist .panel { padding: 12px 14px; margin-bottom: 10px; }
+.view-certlist .data-table th, .view-certlist .data-table td { padding: 4px 6px; font-size: 11.5px; }
+.view-certlist .panel { padding: 10px 10px; margin-bottom: 10px; }
 
 /* Overview balance-sheet table: column-level alignment (category left, amounts/counts right)
    comes from each column's `align` option (see viewOverview.js) — this just adds zebra
@@ -194,13 +194,13 @@ body {
 .view-certlist .table-scroll thead th { position: sticky; top: 0; z-index: 1; }
 
 .data-table th {
-  text-align: center; padding: 10px 10px; background: #faf8f4; color: var(--text-2);
+  text-align: center; padding: 8px 8px; background: #faf8f4; color: var(--text-2);
   font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px;
   border-bottom: 1px solid var(--border); white-space: nowrap;
 }
 .data-table th.sortable-th { cursor: pointer; user-select: none; }
 .data-table th.sortable-th:hover { color: var(--accent-dark); }
-.data-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; text-align: center; }
+.data-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; text-align: center; }
 .data-table tr:hover td { background: #fbfaf7; }
 .data-table tr.row-needs-review td { background: var(--warn-light); }
 .data-table select, .data-table input { padding: 5px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 12px; font-family: inherit; }
@@ -283,6 +283,7 @@ input.date-text { width: 108px; }
 .cd-field-label { font-size: 10.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
 .cd-field-value { font-size: 13px; color: var(--text); font-weight: 600; margin-top: 2px; }
 .cd-notice { background: var(--warn-light); color: #a56a1a; border-radius: var(--radius-sm); padding: 8px 12px; font-size: 12px; margin-bottom: 14px; }
+.cd-actions { margin: 0 0 14px; display: flex; gap: 8px; }
 
 .action-badge {
   display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 10.5px; font-weight: 800; white-space: nowrap;

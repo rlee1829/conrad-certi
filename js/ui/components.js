@@ -257,6 +257,34 @@ CertApp.ui.renderLogoutLink = function () {
   }, [CertApp.i18n.t('login.logout')]));
 };
 
+// Shared "유효기간 연장" (extend validity) modal — used from both the Expiry Queue (per-row
+// button) and the Certificate Detail panel (so an expired cert browsed in the Certificate List
+// can be extended too). Requires a Mate Approval # + a future new expiry date; on success calls
+// onDone() so the caller can refresh its own view. Eligibility (ACTIVE only, i.e. not USED /
+// not yet misc-income-converted / not void) is enforced inside certificateWorkflow.extendExpiry.
+CertApp.ui.openExtendModal = function (rec, onDone) {
+  var ui = CertApp.ui, t = CertApp.i18n.t;
+  var d = new Date(); d.setFullYear(d.getFullYear() + 1);
+  var newDateInput = ui.el('input', { type: 'date', value: CertApp.formatLocalDate(d) });
+  var approvalInput = ui.el('input', { type: 'text', placeholder: t('eq.extend.approvalPlaceholder') });
+  ui.openModal(t('eq.extend.title', { certNo: rec.certificateNo }), [
+    ui.el('div', { class: 'muted', style: 'margin-bottom:12px' }, [t('eq.extend.desc')]),
+    ui.el('div', { style: 'margin-bottom:12px' }, [
+      ui.el('label', {}, [t('eq.extend.currentExpiry')]),
+      ui.el('div', { class: 'cd-field-value', text: rec.expiryDate || '–' })
+    ]),
+    ui.el('div', { style: 'margin-bottom:12px' }, [ui.el('label', {}, [t('eq.extend.newExpiry')]), newDateInput]),
+    ui.el('div', {}, [ui.el('label', {}, [t('eq.extend.approvalNo')]), approvalInput])
+  ], function () {
+    var approvalNo = approvalInput.value.trim();
+    if (!approvalNo) { ui.toast(t('eq.extend.needApproval'), 'warn'); return false; }
+    CertApp.certificateWorkflow.extendExpiry(rec.id, { newExpiryDate: newDateInput.value, approvalNo: approvalNo }).then(function () {
+      ui.toast('1' + t('eq.extend.done'), 'success');
+      if (onDone) onDone();
+    }).catch(function (err) { ui.toast(err.message, 'error'); });
+  }, t('eq.extend.confirm'));
+};
+
 // Simple modal: title + body elements + confirm/cancel. onConfirm may return false to keep it open.
 CertApp.ui.openModal = function (title, bodyChildren, onConfirm, confirmLabel) {
   var existing = document.getElementById('modal-backdrop');

@@ -128,6 +128,7 @@ body {
 /* Certificate List: dense rows so a full page (20) fits the viewport height without a vertical
    scrollbar; the list still scrolls horizontally for its many columns. */
 .view-certlist .data-table th, .view-certlist .data-table td { padding: 4px 6px; font-size: 11.5px; }
+.product-select { min-width: 200px; }
 .view-certlist .panel { padding: 10px 10px; margin-bottom: 10px; }
 
 /* Overview balance-sheet table: column-level alignment (category left, amounts/counts right)

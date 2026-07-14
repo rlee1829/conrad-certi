@@ -30,11 +30,11 @@ CertApp.viewCertificateList = (function () {
   var SERVICE_DETAIL_OPTIONS = {
     SC_FB_ROOMS: [
       { group: 'Room Only', items: [
-        'Deluxe (Room Only)', 'Premium (Room Only)', 'Premium Riverview (Room Only)', 'Queen Corner Premium (Room Only)',
-        'Executive (Room Only)', 'Executive Riverview (Room Only)', 'King Executive City (Room Only)', 'King Executive River (Room Only)'
+        'Room Only (Deluxe Room)', 'Room Only (Premium Cityview Room)', 'Room Only (Premium Riverview Room)',
+        'Room Only (Queen Corner Premium Room)', 'Room Only (Executive Room)', 'Room Only (Executive Riverview Room)',
+        'Room Only (Deluxe King Corner Suite)', 'Room Only (Premium King Corner Suite)', 'Room Only (Executive King Corner Suite)'
       ] },
-      { group: 'Room + Breakfast', items: ['Deluxe + 2BF', 'Premium + 1BF', 'Premium + 2BF', 'Premium Riverview + 2BF'] },
-      { group: 'Room + Executive Lounge', items: ['Executive Riverview + Lounge', 'King Executive Corner Suite + Lounge'] },
+      { group: 'Bed & Breakfast', items: ['Bed & Breakfast (Deluxe Room)', 'Bed & Breakfast (Premium Riverview Room)'] },
       { group: 'F&B', items: ['Zest - 1 pax', 'Zest - 2 pax', 'Flames - Cake'] }
     ],
     SC_SPA: [{ group: 'SPA', items: ['Conrad Signature 60min', 'Conrad Signature 90min', 'Conrad Signature 120min'] }],
@@ -42,6 +42,57 @@ CertApp.viewCertificateList = (function () {
     GC_50000: [],
     GC_100000: []
   };
+
+  // Current sellable voucher catalog — from "상품권 Voucher Market list_as of Jan 2026".
+  // SPA-containing products and the 50,000 gift voucher are discontinued and deliberately omitted.
+  // Picking a product in the new-issue form auto-fills category + amount + service detail; the
+  // expiry then follows the standard rule (Service = 1 year, Gift = 5 years) via defaultExpiryFor().
+  // Prices are the tax-inclusive selling prices (Room Only / B&B are the 2-guest price).
+  var PRODUCT_CATALOG = [
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 715000, name: 'Deluxe Room', detail: 'Room Only (Deluxe Room)' },
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 742500, name: 'Premium Cityview Room', detail: 'Room Only (Premium Cityview Room)' },
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 770000, name: 'Premium Riverview Room', detail: 'Room Only (Premium Riverview Room)' },
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 797500, name: 'Queen Corner Premium Room', detail: 'Room Only (Queen Corner Premium Room)' },
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 918500, name: 'Executive Room', detail: 'Room Only (Executive Room)' },
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 973500, name: 'Executive Riverview Room', detail: 'Room Only (Executive Riverview Room)' },
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 1149500, name: 'Deluxe King Corner Suite', detail: 'Room Only (Deluxe King Corner Suite)' },
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 1204500, name: 'Premium King Corner Suite', detail: 'Room Only (Premium King Corner Suite)' },
+    { group: 'Room Only (2인)', category: 'SC_FB_ROOMS', amount: 1303500, name: 'Executive King Corner Suite', detail: 'Room Only (Executive King Corner Suite)' },
+    { group: 'Bed & Breakfast (2인)', category: 'SC_FB_ROOMS', amount: 792000, name: 'Deluxe Room + 조식', detail: 'Bed & Breakfast (Deluxe Room)' },
+    { group: 'Bed & Breakfast (2인)', category: 'SC_FB_ROOMS', amount: 847000, name: 'Premium Riverview + 조식', detail: 'Bed & Breakfast (Premium Riverview Room)' },
+    { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 180000, name: 'Zest 1인', detail: 'Zest - 1 pax' },
+    { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 360000, name: 'Zest 2인', detail: 'Zest - 2 pax' },
+    { group: 'Gift Certificate', category: 'GC_100000', amount: 100000, name: 'Cash Voucher (10만원권)', detail: 'Cash Voucher' }
+  ];
+
+  // Categories that can still be NEWLY issued — excludes discontinued SPA vouchers and the
+  // 50,000 gift voucher. Legacy SC_SPA / GC_50000 records stay fully viewable, filterable, and
+  // editable everywhere else; they just can't be created anew.
+  var DISCONTINUED_FOR_ISSUE = { SC_SPA: true, GC_50000: true };
+  function sellableCategoryKeys() {
+    return Object.keys(CertApp.CATEGORY).filter(function (c) { return !DISCONTINUED_FOR_ISSUE[c]; });
+  }
+  // Gift voucher face value for NEW issuance: 100,000 only (50,000 discontinued). Inline editing of
+  // legacy records keeps the full GC_AMOUNT_OPTIONS so existing 50,000 vouchers stay editable.
+  var NEW_ISSUE_GC_OPTIONS = [100000];
+
+  function productLabel(p) { return p.name + ' — ' + ui.formatCurrency(p.amount); }
+  // One-shot product picker (grouped by voucher type): on select, calls onPick(product) to
+  // auto-fill the target row/quick-fill, then the panel re-renders and the select returns to its
+  // placeholder — it's an action, not a bound field.
+  function buildProductSelect(onPick) {
+    var groups = {};
+    PRODUCT_CATALOG.forEach(function (p, i) { (groups[p.group] = groups[p.group] || []).push({ p: p, i: i }); });
+    var children = [ui.el('option', { value: '', text: t('cl.product.choose') })];
+    Object.keys(groups).forEach(function (g) {
+      children.push(ui.el('optgroup', { label: g }, groups[g].map(function (o) {
+        return ui.el('option', { value: String(o.i), text: productLabel(o.p) });
+      })));
+    });
+    var sel = ui.el('select', { class: 'product-select' }, children);
+    sel.addEventListener('change', function () { if (sel.value !== '') onPick(PRODUCT_CATALOG[Number(sel.value)]); });
+    return sel;
+  }
 
   // ---- persisted custom service-detail entries (added via "기타") ----
   var CUSTOM_DETAILS_KEY = 'certapp_custom_details';
@@ -269,14 +320,14 @@ CertApp.viewCertificateList = (function () {
 
   function newBulkIssueRow() {
     var today = CertApp.today();
-    var category = Object.keys(CertApp.CATEGORY)[0];
+    var category = sellableCategoryKeys()[0];
     return { category: category, certificateNo: '', issuedDate: today, expiryDate: defaultExpiryFor(category, today),
       amountA: defaultAmountFor(category), paymentType: '', certificateDetail: '', sellerOperaId: '', discountReceiptNote: '' };
   }
 
   function newQuickFill() {
     var today = CertApp.today();
-    var category = Object.keys(CertApp.CATEGORY)[0];
+    var category = sellableCategoryKeys()[0];
     return { category: category, startNo: '', qty: 20, amountA: defaultAmountFor(category),
       issuedDate: today, paymentType: '', certificateDetail: '', note: '', discountReceiptNote: '' };
   }
@@ -446,10 +497,10 @@ CertApp.viewCertificateList = (function () {
 
   // Gift Certificates only ever have two legitimate face values — render a fixed
   // 50,000/100,000 choice instead of a free-form number to prevent typos.
-  function amountFieldFor(category, currentValue, onChange) {
+  function amountFieldFor(category, currentValue, onChange, gcOptions) {
     if (acc.isGiftCertificate(category)) {
       return ui.el('select', { onchange: function (e) { onChange(Number(e.target.value)); } },
-        GC_AMOUNT_OPTIONS.map(function (v) {
+        (gcOptions || GC_AMOUNT_OPTIONS).map(function (v) {
           return ui.el('option', Object.assign({ value: v, text: ui.formatCurrency(v) }, Number(currentValue) === v ? { selected: 'selected' } : {}));
         }));
     }
@@ -481,9 +532,14 @@ CertApp.viewCertificateList = (function () {
     if (!quickFill) quickFill = newQuickFill();
     var q = quickFill;
 
+    var productField = buildProductSelect(function (prod) {
+      q.category = prod.category; q.amountA = prod.amount; q.certificateDetail = prod.detail; q._detailGroup = null;
+      renderBulkIssuePanel();
+    });
+
     var catSelect = ui.el('select', { onchange: function (e) {
       q.category = e.target.value; q.amountA = defaultAmountFor(q.category); renderBulkIssuePanel();
-    } }, Object.keys(CertApp.CATEGORY).map(function (c) {
+    } }, sellableCategoryKeys().map(function (c) {
       return ui.el('option', Object.assign({ value: c, text: CertApp.CATEGORY_LABEL[c] }, c === q.category ? { selected: 'selected' } : {}));
     }));
 
@@ -501,7 +557,7 @@ CertApp.viewCertificateList = (function () {
     wireCertNoSuggestion(startInput, suggestNextCertNo(q.category), function (v) { q.startNo = v; updateEnd(); });
     updateEnd();
 
-    var amountField = amountFieldFor(q.category, q.amountA, function (v) { q.amountA = v; });
+    var amountField = amountFieldFor(q.category, q.amountA, function (v) { q.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
     var issuedInput = dateTextInput(q.issuedDate, function (v) { q.issuedDate = v; });
     var paymentField = selectWithOther(PAYMENT_OPTIONS, q.paymentType, function (v) { q.paymentType = v; });
     var detailField = detailSelect(q.category, q.certificateDetail, function (v, group) { q.certificateDetail = v; if (group) q._detailGroup = group; });
@@ -518,6 +574,7 @@ CertApp.viewCertificateList = (function () {
     return ui.el('div', { class: 'quickfill-block' }, [
       ui.el('div', { class: 'muted', style: 'margin-bottom:8px;font-size:12px' }, [t('cl.quickFill.desc')]),
       ui.el('div', { class: 'quickfill-row' }, [
+        labeled('cl.product.label', productField),
         labeled('cl.bulkIssue.col.category', catSelect),
         certNoField,
         labeled('cl.quickFill.qty', qtyInput),
@@ -533,6 +590,11 @@ CertApp.viewCertificateList = (function () {
   }
 
   function renderIssueRow(row, idx) {
+    var productField = buildProductSelect(function (prod) {
+      row.category = prod.category; row.amountA = prod.amount; row.certificateDetail = prod.detail; row._detailGroup = null;
+      row.expiryDate = defaultExpiryFor(prod.category, row.issuedDate);
+      renderBulkIssuePanel();
+    });
     var catSelect = ui.el('select', {
       onchange: function (e) {
         row.category = e.target.value;
@@ -540,20 +602,20 @@ CertApp.viewCertificateList = (function () {
         row.amountA = defaultAmountFor(row.category);
         renderBulkIssuePanel();
       }
-    }, Object.keys(CertApp.CATEGORY).map(function (c) {
+    }, sellableCategoryKeys().map(function (c) {
       return ui.el('option', Object.assign({ value: c, text: CertApp.CATEGORY_LABEL[c] }, c === row.category ? { selected: 'selected' } : {}));
     }));
     var certNoInput = ui.el('input', { type: 'text', value: row.certificateNo, oninput: function (e) { row.certificateNo = e.target.value; } });
     wireCertNoSuggestion(certNoInput, suggestNextCertNo(row.category, row), function (v) { row.certificateNo = v; });
     var issuedInput = dateTextInput(row.issuedDate, function (v) { row.issuedDate = v; row.expiryDate = defaultExpiryFor(row.category, row.issuedDate); renderBulkIssuePanel(); });
     var expiryInput = dateTextInput(row.expiryDate, function (v) { row.expiryDate = v; });
-    var amountField = amountFieldFor(row.category, row.amountA, function (v) { row.amountA = v; });
+    var amountField = amountFieldFor(row.category, row.amountA, function (v) { row.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
     var paymentField = selectWithOther(PAYMENT_OPTIONS, row.paymentType, function (v) { row.paymentType = v; });
     var detailField = detailSelect(row.category, row.certificateDetail, function (v, group) { row.certificateDetail = v; if (group) row._detailGroup = group; });
     var sellerInput = ui.el('input', { type: 'text', value: row.sellerOperaId, oninput: function (e) { row.sellerOperaId = e.target.value; } });
     var discountInput = ui.el('input', { type: 'text', value: row.discountReceiptNote, oninput: function (e) { row.discountReceiptNote = e.target.value; } });
     var removeBtn = ui.el('button', { class: 'btn', text: '✕', onclick: function () { bulkIssueRows.splice(idx, 1); renderBulkIssuePanel(); } });
-    return ui.el('tr', {}, [catSelect, certNoInput, amountField, issuedInput, expiryInput, paymentField, detailField, sellerInput, discountInput, removeBtn]
+    return ui.el('tr', {}, [productField, catSelect, certNoInput, amountField, issuedInput, expiryInput, paymentField, detailField, sellerInput, discountInput, removeBtn]
       .map(function (el) { return ui.el('td', {}, [el]); }));
   }
 
@@ -573,11 +635,12 @@ CertApp.viewCertificateList = (function () {
         modeToggleBtn('bulk', 'cl.issue.modeBulk')
       ])
     ]));
+    children.push(ui.el('div', { class: 'muted', style: 'font-size:11.5px;margin:-2px 0 8px', text: t('cl.product.discontinuedNote') }));
 
     if (issueMode === 'bulk') children.push(renderQuickFillInputs());
 
     var headerLabels = [
-      t('cl.bulkIssue.col.category'), t('cl.bulkIssue.col.certNo'), t('cl.bulkIssue.col.amount'), t('cl.bulkIssue.col.issuedDate'),
+      t('cl.product.label'), t('cl.bulkIssue.col.category'), t('cl.bulkIssue.col.certNo'), t('cl.bulkIssue.col.amount'), t('cl.bulkIssue.col.issuedDate'),
       t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.bulkIssue.col.detail'), t('cl.bulkIssue.col.seller'), t('cl.col.discountReceipt'), ''
     ];
     var thead = ui.el('thead', {}, [ui.el('tr', {}, headerLabels.map(function (h) { return ui.el('th', { text: h }); }))]);

@@ -62,8 +62,18 @@ CertApp.viewCertificateList = (function () {
     { group: 'Bed & Breakfast (2인)', category: 'SC_FB_ROOMS', amount: 847000, name: 'Premium Riverview + 조식', detail: 'Bed & Breakfast (Premium Riverview Room)' },
     { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 180000, name: 'Zest 1인', detail: 'Zest - 1 pax' },
     { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 360000, name: 'Zest 2인', detail: 'Zest - 2 pax' },
+    { group: 'Pulse 8', category: 'SC_PULSE8', amount: 45000, name: 'Pulse 8 1Day Pass', detail: 'Pulse 8 1Day Pass' },
     { group: 'Gift Certificate', category: 'GC_100000', amount: 100000, name: 'Cash Voucher (10만원권)', detail: 'Cash Voucher' }
   ];
+
+  // The single catalog product for a category, if the category has exactly one — used so that
+  // picking such a 종류 (e.g. Service - Pulse8 = one 45,000원 pass, or the 100,000 Cash Voucher)
+  // auto-fills 금액 + 서비스 포함내역 with no extra step. Multi-product categories (FB & Rooms)
+  // return null, so the cashier still picks which package from 서비스 포함내역.
+  function catalogSingleFor(category) {
+    var m = PRODUCT_CATALOG.filter(function (p) { return p.category === category; });
+    return m.length === 1 ? m[0] : null;
+  }
 
   // Categories that can still be NEWLY issued — excludes discontinued SPA vouchers and the
   // 50,000 gift voucher. Legacy SC_SPA / GC_50000 records stay fully viewable, filterable, and
@@ -297,7 +307,10 @@ CertApp.viewCertificateList = (function () {
   }
 
   function defaultAmountFor(category) {
-    return category === CertApp.CATEGORY.GC_50000 ? 50000 : (category === CertApp.CATEGORY.GC_100000 ? 100000 : '');
+    if (category === CertApp.CATEGORY.GC_50000) return 50000;
+    if (category === CertApp.CATEGORY.GC_100000) return 100000;
+    if (category === CertApp.CATEGORY.SC_PULSE8) return 45000;   // one fixed 45,000원 day pass
+    return '';
   }
 
   function newBulkIssueRow() {
@@ -488,6 +501,8 @@ CertApp.viewCertificateList = (function () {
     }
     // Text (not number) input so it can display a thousands-separated, right-aligned value
     // (e.g. "715,000"); we keep only the digits internally and hand a plain Number to onChange.
+    // A trailing 원/₩ unit (matching formatCurrency, which the GC amount select already uses) is
+    // shown next to it so Service amounts read as currency too.
     var input = ui.el('input', { type: 'text', inputmode: 'numeric', class: 'amount-input',
       value: (currentValue === '' || currentValue === null || currentValue === undefined) ? '' : ui.formatNumber(currentValue) });
     input.addEventListener('input', function () {
@@ -496,7 +511,8 @@ CertApp.viewCertificateList = (function () {
       input.value = digits === '' ? '' : ui.formatNumber(Number(digits));
       input.setSelectionRange(input.value.length, input.value.length);
     });
-    return input;
+    var unit = ui.el('span', { class: 'amount-unit', text: CertApp.i18n.getLang() === 'en' ? 'KRW' : '원' });
+    return ui.el('div', { class: 'amount-cell' }, [input, unit]);
   }
 
   // Switch between the two issue modes. Resets the working list so the modes don't bleed into
@@ -523,7 +539,11 @@ CertApp.viewCertificateList = (function () {
     var q = quickFill;
 
     var catSelect = ui.el('select', { onchange: function (e) {
-      q.category = e.target.value; q.amountA = defaultAmountFor(q.category); renderBulkIssuePanel();
+      q.category = e.target.value;
+      var single = catalogSingleFor(q.category);
+      if (single) { q.amountA = single.amount; q.certificateDetail = single.detail; }
+      else { q.amountA = defaultAmountFor(q.category); q.certificateDetail = ''; }
+      renderBulkIssuePanel();
     } }, sellableCategoryKeys().map(function (c) {
       return ui.el('option', Object.assign({ value: c, text: CertApp.CATEGORY_LABEL[c] }, c === q.category ? { selected: 'selected' } : {}));
     }));
@@ -580,7 +600,9 @@ CertApp.viewCertificateList = (function () {
       onchange: function (e) {
         row.category = e.target.value;
         row.expiryDate = defaultExpiryFor(row.category, row.issuedDate);
-        row.amountA = defaultAmountFor(row.category);
+        var single = catalogSingleFor(row.category);
+        if (single) { row.amountA = single.amount; row.certificateDetail = single.detail; }
+        else { row.amountA = defaultAmountFor(row.category); row.certificateDetail = ''; }
         renderBulkIssuePanel();
       }
     }, sellableCategoryKeys().map(function (c) {

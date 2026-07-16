@@ -21,7 +21,7 @@ CertApp.viewCertificateList = (function () {
   // Curated payment methods for NEW issuance (the historical import data has 50+ messy one-off
   // values, unusable as a picker) — "기타" covers anything else. Service-detail options are
   // likewise curated per family below (SERVICE_DETAIL_OPTIONS).
-  var PAYMENT_OPTIONS = ['CC', 'Cash', 'Bank transfer', 'COMP', 'ROOM'];
+  var PAYMENT_OPTIONS = ['CC', 'Cash', 'Bank transfer', 'COMP'];
 
   // Standard service-package options per certificate family for NEW issuance, grouped by 대분류
   // so the dropdown is organized instead of showing the hundreds of messy free-text variants in
@@ -486,8 +486,16 @@ CertApp.viewCertificateList = (function () {
           return ui.el('option', Object.assign({ value: v, text: ui.formatCurrency(v) }, Number(currentValue) === v ? { selected: 'selected' } : {}));
         }));
     }
-    var input = ui.el('input', { type: 'number', value: currentValue });
-    input.addEventListener('input', function () { onChange(Number(input.value)); });
+    // Text (not number) input so it can display a thousands-separated, right-aligned value
+    // (e.g. "715,000"); we keep only the digits internally and hand a plain Number to onChange.
+    var input = ui.el('input', { type: 'text', inputmode: 'numeric', class: 'amount-input',
+      value: (currentValue === '' || currentValue === null || currentValue === undefined) ? '' : ui.formatNumber(currentValue) });
+    input.addEventListener('input', function () {
+      var digits = input.value.replace(/[^\d]/g, '');
+      onChange(digits === '' ? '' : Number(digits));
+      input.value = digits === '' ? '' : ui.formatNumber(Number(digits));
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
     return input;
   }
 
@@ -520,7 +528,7 @@ CertApp.viewCertificateList = (function () {
       return ui.el('option', Object.assign({ value: c, text: CertApp.CATEGORY_LABEL[c] }, c === q.category ? { selected: 'selected' } : {}));
     }));
 
-    var startInput = ui.el('input', { type: 'text', value: q.startNo, placeholder: t('cl.quickFill.startPlaceholder'), style: 'width:120px' });
+    var startInput = ui.el('input', { type: 'text', class: 'cert-no-input', value: q.startNo, placeholder: t('cl.quickFill.startPlaceholder'), style: 'width:120px' });
     var endLabel = ui.el('span', { class: 'quickfill-end' });
     var qtyInput = ui.el('input', { type: 'number', min: '1', value: q.qty, style: 'width:64px' });
     function updateEnd() {
@@ -585,7 +593,7 @@ CertApp.viewCertificateList = (function () {
         renderBulkIssuePanel();
       },
       function (v) { row.certificateDetail = v; });
-    var certNoInput = ui.el('input', { type: 'text', value: row.certificateNo, oninput: function (e) { row.certificateNo = e.target.value; } });
+    var certNoInput = ui.el('input', { type: 'text', class: 'cert-no-input', value: row.certificateNo, oninput: function (e) { row.certificateNo = e.target.value; } });
     wireCertNoSuggestion(certNoInput, suggestNextCertNo(row.category, row), function (v) { row.certificateNo = v; });
     var issuedInput = dateTextInput(row.issuedDate, function (v) { row.issuedDate = v; row.expiryDate = defaultExpiryFor(row.category, row.issuedDate); renderBulkIssuePanel(); });
     var expiryInput = dateTextInput(row.expiryDate, function (v) { row.expiryDate = v; });

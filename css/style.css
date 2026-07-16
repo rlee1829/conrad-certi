@@ -258,6 +258,9 @@ body {
 .detail-group-sel { max-width: 160px; }
 /* YYYY-MM-DD text date field (see dateTextInput) — sized to fit the ISO date. */
 input.date-text { width: 108px; }
+/* New-issue form alignment: 증서번호/발행일/만료일 centered, 금액 right-aligned with commas. */
+input.cert-no-input, input.date-text { text-align: center; }
+input.amount-input { text-align: right; }
 
 /* Expiry Queue forecast table: two-row header, bucket group label spanning its 건수/금액
    pair (row 1) with the short sub-labels beneath (row 2) — see viewExpiryQueue.js

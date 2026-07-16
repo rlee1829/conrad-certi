@@ -76,24 +76,6 @@ CertApp.viewCertificateList = (function () {
   // legacy records keeps the full GC_AMOUNT_OPTIONS so existing 50,000 vouchers stay editable.
   var NEW_ISSUE_GC_OPTIONS = [100000];
 
-  function productLabel(p) { return p.name + ' — ' + ui.formatCurrency(p.amount); }
-  // One-shot product picker (grouped by voucher type): on select, calls onPick(product) to
-  // auto-fill the target row/quick-fill, then the panel re-renders and the select returns to its
-  // placeholder — it's an action, not a bound field.
-  function buildProductSelect(onPick) {
-    var groups = {};
-    PRODUCT_CATALOG.forEach(function (p, i) { (groups[p.group] = groups[p.group] || []).push({ p: p, i: i }); });
-    var children = [ui.el('option', { value: '', text: t('cl.product.choose') })];
-    Object.keys(groups).forEach(function (g) {
-      children.push(ui.el('optgroup', { label: g }, groups[g].map(function (o) {
-        return ui.el('option', { value: String(o.i), text: productLabel(o.p) });
-      })));
-    });
-    var sel = ui.el('select', { class: 'product-select' }, children);
-    sel.addEventListener('change', function () { if (sel.value !== '') onPick(PRODUCT_CATALOG[Number(sel.value)]); });
-    return sel;
-  }
-
   // ---- persisted custom service-detail entries (added via "기타") ----
   var CUSTOM_DETAILS_KEY = 'certapp_custom_details';
   function loadCustomDetails() {
@@ -420,39 +402,39 @@ CertApp.viewCertificateList = (function () {
     return ui.el('div', { class: 'select-other' }, [select, otherInput]);
   }
 
-  // Service-detail picker: a grouped (대분류 <optgroup>) dropdown of curated + previously-saved
-  // custom packages, plus "기타" which reveals a 대분류 selector + free-text box. onChange gets
-  // (value, group); the caller stashes the group so onSubmitBulkIssue can persist a new custom
-  // entry under that 대분류 (see saveCustomDetail) for next time.
-  function detailSelect(category, currentValue, onChange) {
-    var groups = mergedDetailGroups(category);
-    var groupLabels = groups.map(function (g) { return g.group; });
-    var flat = flatOptionValues(groups);
+  // New-issue "서비스 포함내역" picker, driven by the price-list catalog (PRODUCT_CATALOG). Since
+  // that list IS the sellable-product list, picking an item also auto-fills 종류(category) and
+  // 금액(amount) via onCatalogPick — so the old separate "상품(가격표)" picker is gone (it was the
+  // same content twice). "기타(직접입력)" keeps a free-text escape hatch (with datalist typeahead)
+  // for anything off the price list — e.g. Pulse 8, which isn't in the catalog.
+  function catalogDetailSelect(currentCategory, currentValue, onCatalogPick, onFreeText) {
+    var groups = {};
+    PRODUCT_CATALOG.forEach(function (p, i) { (groups[p.group] = groups[p.group] || []).push({ p: p, i: i }); });
+    var catalogDetails = PRODUCT_CATALOG.map(function (p) { return p.detail; });
     var cur = currentValue == null ? '' : String(currentValue);
-    var isCustom = cur !== '' && flat.indexOf(cur) === -1;
+    var isCatalog = catalogDetails.indexOf(cur) !== -1;
+    var isCustom = cur !== '' && !isCatalog;
 
-    function optionEl(o) { return ui.el('option', Object.assign({ value: o, text: o }, (!isCustom && o === cur) ? { selected: 'selected' } : {})); }
     var children = [ui.el('option', Object.assign({ value: '', text: '—' }, cur === '' ? { selected: 'selected' } : {}))];
-    groups.forEach(function (g) { if (g.items.length) children.push(ui.el('optgroup', { label: g.group }, g.items.map(optionEl))); });
+    Object.keys(groups).forEach(function (g) {
+      children.push(ui.el('optgroup', { label: g }, groups[g].map(function (o) {
+        return ui.el('option', Object.assign({ value: String(o.i), text: o.p.detail }, (isCatalog && o.p.detail === cur) ? { selected: 'selected' } : {}));
+      })));
+    });
     children.push(ui.el('option', Object.assign({ value: '__other__', text: t('cl.otherOption') }, isCustom ? { selected: 'selected' } : {})));
     var select = ui.el('select', {}, children);
 
-    var groupSel = ui.el('select', { class: 'detail-group-sel' }, groupLabels.map(function (l) { return ui.el('option', { value: l, text: l }); }));
-    // <datalist> typeahead: shows similar existing examples as the cashier types.
     var dlId = 'detail-dl-' + (_detailDlSeq++);
-    var datalist = ui.el('datalist', { id: dlId }, detailSuggestionPool(category).map(function (v) { return ui.el('option', { value: v }); }));
+    var datalist = ui.el('datalist', { id: dlId }, detailSuggestionPool(currentCategory).map(function (v) { return ui.el('option', { value: v }); }));
     var otherInput = ui.el('input', { type: 'text', value: isCustom ? cur : '', placeholder: t('cl.otherPlaceholder'), list: dlId, autocomplete: 'off' });
-    var otherWrap = ui.el('div', { class: 'detail-other' }, [
-      ui.el('span', { class: 'muted', style: 'font-size:11px', text: t('cl.detailGroupLabel') }), groupSel, otherInput, datalist
-    ]);
+    var otherWrap = ui.el('div', { class: 'detail-other' }, [otherInput, datalist]);
     otherWrap.style.display = isCustom ? '' : 'none';
+    otherInput.addEventListener('input', function () { onFreeText(otherInput.value); });
 
-    function emit() { onChange(otherInput.value, groupSel.value); }
-    otherInput.addEventListener('input', emit);
-    groupSel.addEventListener('change', emit);
     select.addEventListener('change', function () {
-      if (select.value === '__other__') { otherWrap.style.display = ''; otherInput.value = ''; otherInput.focus(); onChange('', groupSel.value); }
-      else { otherWrap.style.display = 'none'; onChange(select.value, null); }
+      if (select.value === '__other__') { otherWrap.style.display = ''; otherInput.value = ''; otherInput.focus(); onFreeText(''); }
+      else if (select.value === '') { otherWrap.style.display = 'none'; onFreeText(''); }
+      else { otherWrap.style.display = 'none'; onCatalogPick(PRODUCT_CATALOG[Number(select.value)]); }
     });
     return ui.el('div', { class: 'select-other detail-select' }, [select, otherWrap]);
   }
@@ -532,11 +514,6 @@ CertApp.viewCertificateList = (function () {
     if (!quickFill) quickFill = newQuickFill();
     var q = quickFill;
 
-    var productField = buildProductSelect(function (prod) {
-      q.category = prod.category; q.amountA = prod.amount; q.certificateDetail = prod.detail; q._detailGroup = null;
-      renderBulkIssuePanel();
-    });
-
     var catSelect = ui.el('select', { onchange: function (e) {
       q.category = e.target.value; q.amountA = defaultAmountFor(q.category); renderBulkIssuePanel();
     } }, sellableCategoryKeys().map(function (c) {
@@ -560,7 +537,9 @@ CertApp.viewCertificateList = (function () {
     var amountField = amountFieldFor(q.category, q.amountA, function (v) { q.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
     var issuedInput = dateTextInput(q.issuedDate, function (v) { q.issuedDate = v; });
     var paymentField = selectWithOther(PAYMENT_OPTIONS, q.paymentType, function (v) { q.paymentType = v; });
-    var detailField = detailSelect(q.category, q.certificateDetail, function (v, group) { q.certificateDetail = v; if (group) q._detailGroup = group; });
+    var detailField = catalogDetailSelect(q.category, q.certificateDetail,
+      function (prod) { q.category = prod.category; q.amountA = prod.amount; q.certificateDetail = prod.detail; q._detailGroup = null; renderBulkIssuePanel(); },
+      function (v) { q.certificateDetail = v; });
     var noteInput = ui.el('input', { type: 'text', value: q.note, style: 'width:120px', oninput: function (e) { q.note = e.target.value; } });
     var discountInput = ui.el('input', { type: 'text', value: q.discountReceiptNote, style: 'width:120px', oninput: function (e) { q.discountReceiptNote = e.target.value; } });
 
@@ -570,18 +549,17 @@ CertApp.viewCertificateList = (function () {
       ui.el('div', { style: 'display:flex;align-items:center;gap:6px' }, [startInput, endLabel])
     ]);
 
-    // Field order: 종류 · 증서번호(+끝번호) · 수량 · 금액 · 발행일 · 결제수단 · 서비스포함내역 · 비고
+    // Field order: 종류 · 서비스포함내역 · 증서번호(+끝번호) · 수량 · 금액 · 발행일 · 결제수단 · 판매자 · 비고2
     return ui.el('div', { class: 'quickfill-block' }, [
       ui.el('div', { class: 'muted', style: 'margin-bottom:8px;font-size:12px' }, [t('cl.quickFill.desc')]),
       ui.el('div', { class: 'quickfill-row' }, [
-        labeled('cl.product.label', productField),
         labeled('cl.bulkIssue.col.category', catSelect),
+        labeled('cl.bulkIssue.col.detail', detailField),
         certNoField,
         labeled('cl.quickFill.qty', qtyInput),
         labeled('cl.bulkIssue.col.amount', amountField),
         labeled('cl.bulkIssue.col.issuedDate', issuedInput),
         labeled('cl.bulkIssue.col.paymentType', paymentField),
-        labeled('cl.bulkIssue.col.detail', detailField),
         labeled('cl.bulkIssue.col.seller', noteInput),
         labeled('cl.col.discountReceipt', discountInput),
         ui.el('button', { class: 'btn btn-primary', text: t('cl.quickFill.generate'), onclick: onQuickGenerate })
@@ -590,11 +568,6 @@ CertApp.viewCertificateList = (function () {
   }
 
   function renderIssueRow(row, idx) {
-    var productField = buildProductSelect(function (prod) {
-      row.category = prod.category; row.amountA = prod.amount; row.certificateDetail = prod.detail; row._detailGroup = null;
-      row.expiryDate = defaultExpiryFor(prod.category, row.issuedDate);
-      renderBulkIssuePanel();
-    });
     var catSelect = ui.el('select', {
       onchange: function (e) {
         row.category = e.target.value;
@@ -605,17 +578,23 @@ CertApp.viewCertificateList = (function () {
     }, sellableCategoryKeys().map(function (c) {
       return ui.el('option', Object.assign({ value: c, text: CertApp.CATEGORY_LABEL[c] }, c === row.category ? { selected: 'selected' } : {}));
     }));
+    var detailField = catalogDetailSelect(row.category, row.certificateDetail,
+      function (prod) {
+        row.category = prod.category; row.amountA = prod.amount; row.certificateDetail = prod.detail;
+        row.expiryDate = defaultExpiryFor(prod.category, row.issuedDate);
+        renderBulkIssuePanel();
+      },
+      function (v) { row.certificateDetail = v; });
     var certNoInput = ui.el('input', { type: 'text', value: row.certificateNo, oninput: function (e) { row.certificateNo = e.target.value; } });
     wireCertNoSuggestion(certNoInput, suggestNextCertNo(row.category, row), function (v) { row.certificateNo = v; });
     var issuedInput = dateTextInput(row.issuedDate, function (v) { row.issuedDate = v; row.expiryDate = defaultExpiryFor(row.category, row.issuedDate); renderBulkIssuePanel(); });
     var expiryInput = dateTextInput(row.expiryDate, function (v) { row.expiryDate = v; });
     var amountField = amountFieldFor(row.category, row.amountA, function (v) { row.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
     var paymentField = selectWithOther(PAYMENT_OPTIONS, row.paymentType, function (v) { row.paymentType = v; });
-    var detailField = detailSelect(row.category, row.certificateDetail, function (v, group) { row.certificateDetail = v; if (group) row._detailGroup = group; });
     var sellerInput = ui.el('input', { type: 'text', value: row.sellerOperaId, oninput: function (e) { row.sellerOperaId = e.target.value; } });
     var discountInput = ui.el('input', { type: 'text', value: row.discountReceiptNote, oninput: function (e) { row.discountReceiptNote = e.target.value; } });
     var removeBtn = ui.el('button', { class: 'btn', text: '✕', onclick: function () { bulkIssueRows.splice(idx, 1); renderBulkIssuePanel(); } });
-    return ui.el('tr', {}, [productField, catSelect, certNoInput, amountField, issuedInput, expiryInput, paymentField, detailField, sellerInput, discountInput, removeBtn]
+    return ui.el('tr', {}, [catSelect, detailField, certNoInput, amountField, issuedInput, expiryInput, paymentField, sellerInput, discountInput, removeBtn]
       .map(function (el) { return ui.el('td', {}, [el]); }));
   }
 
@@ -640,8 +619,8 @@ CertApp.viewCertificateList = (function () {
     if (issueMode === 'bulk') children.push(renderQuickFillInputs());
 
     var headerLabels = [
-      t('cl.product.label'), t('cl.bulkIssue.col.category'), t('cl.bulkIssue.col.certNo'), t('cl.bulkIssue.col.amount'), t('cl.bulkIssue.col.issuedDate'),
-      t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.bulkIssue.col.detail'), t('cl.bulkIssue.col.seller'), t('cl.col.discountReceipt'), ''
+      t('cl.bulkIssue.col.category'), t('cl.bulkIssue.col.detail'), t('cl.bulkIssue.col.certNo'), t('cl.bulkIssue.col.amount'), t('cl.bulkIssue.col.issuedDate'),
+      t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.bulkIssue.col.seller'), t('cl.col.discountReceipt'), ''
     ];
     var thead = ui.el('thead', {}, [ui.el('tr', {}, headerLabels.map(function (h) { return ui.el('th', { text: h }); }))]);
     var tbody = ui.el('tbody', {}, bulkIssueRows.map(renderIssueRow));

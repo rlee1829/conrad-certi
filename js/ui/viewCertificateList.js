@@ -145,7 +145,7 @@ CertApp.viewCertificateList = (function () {
   var rowInputs = {};      // id -> { field: <input/select element> }, for cross-field smart defaults
 
   var bulkIssuePanelOpen = false;
-  var issueMode = 'single'; // 'single' (1장씩) | 'bulk' (연번 여러 장)
+  var issueMode = 'bulk'; // 'bulk' (연번 여러 장, default) | 'single' (1장씩)
   var bulkIssueRows = [];
   var quickFill = null; // 연번 자동 생성 form state (see newQuickFill)
 
@@ -230,7 +230,7 @@ CertApp.viewCertificateList = (function () {
 
   function render(container) {
     selectedIds = {}; unlockedIds = {}; pendingRowEdits = {}; rowInputs = {};
-    bulkIssuePanelOpen = false; issueMode = 'single'; bulkIssueRows = []; quickFill = null;
+    bulkIssuePanelOpen = false; issueMode = 'bulk'; bulkIssueRows = []; quickFill = null;
 
     var wrap = ui.el('div', { class: 'view-certlist' });
 
@@ -335,15 +335,18 @@ CertApp.viewCertificateList = (function () {
   function newQuickFill() {
     var today = CertApp.today();
     var category = sellableCategoryKeys()[0];
-    return { category: category, startNo: '', qty: 20, amountA: defaultAmountFor(category),
+    return { category: category, startNo: '', qty: 10, amountA: defaultAmountFor(category),
       issuedDate: today, paymentType: '', certificateDetail: '', note: '', discountReceiptNote: '' };
   }
 
   function toggleBulkIssuePanel() {
     bulkIssuePanelOpen = !bulkIssuePanelOpen;
     if (bulkIssuePanelOpen) {
-      issueMode = 'single';               // default to single-issue
-      bulkIssueRows = [newBulkIssueRow()]; // one blank row; "행 추가" adds more
+      // Default to 연번 여러 장: vouchers are almost always sold as a numbered batch (a Pulse 8
+      // 10-pack, a block of gift certificates), so the batch form is the common case. The list
+      // starts empty and is filled by 생성; "1장씩" is one click away.
+      issueMode = 'bulk';
+      bulkIssueRows = [];
       quickFill = newQuickFill();
     }
     renderBulkIssuePanel();
@@ -464,10 +467,12 @@ CertApp.viewCertificateList = (function () {
     return ui.el('div', { class: 'select-other detail-select' }, [select, otherWrap]);
   }
 
-  // Text date field that always shows/stores YYYY-MM-DD — a native <input type=date> renders in
-  // the browser locale (e.g. MM/DD/YYYY), which we don't want here.
+  // Native date field, so 발행일/만료일 can be picked from the calendar instead of typed. The
+  // browser renders it in its own locale, but the underlying value is always YYYY-MM-DD — which
+  // is what we read and store — and this matches the date inputs the rest of the app already
+  // uses (period filters, inline row editing).
   function dateTextInput(value, onChange) {
-    var input = ui.el('input', { type: 'text', value: value || '', placeholder: 'YYYY-MM-DD', maxlength: '10', class: 'date-text' });
+    var input = ui.el('input', { type: 'date', value: value || '', class: 'date-text' });
     input.addEventListener('change', function () { onChange(input.value.trim()); });
     return input;
   }

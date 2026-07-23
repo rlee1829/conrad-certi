@@ -256,8 +256,9 @@ body {
    So a custom package is filed under the right group and remembered for next time. */
 .detail-other { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .detail-group-sel { max-width: 160px; }
-/* YYYY-MM-DD text date field (see dateTextInput) — sized to fit the ISO date. */
-input.date-text { width: 108px; }
+/* Date field in the issue form (see dateTextInput) — wide enough for the locale-rendered date
+   plus the native calendar picker icon. */
+input.date-text { width: 148px; }
 /* New-issue form alignment: 증서번호/발행일/만료일 centered, 금액 right-aligned with commas. */
 input.cert-no-input, input.date-text { text-align: center; }
 input.amount-input { text-align: right; }

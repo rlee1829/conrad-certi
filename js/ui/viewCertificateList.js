@@ -942,7 +942,11 @@ CertApp.viewCertificateList = (function () {
     if (selCount > 0) {
       bar.appendChild(ui.el('span', { class: 'muted', text: t('cl.toolbar.selected', { n: selCount }) }));
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.unlock'), onclick: onUnlockSelected }));
-      bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.markReviewed'), onclick: onMarkReviewedSelected }));
+      // "이상없음 처리" only makes sense while working through the review queue, so it appears
+      // only when the 검토 필요 항목만 filter is on — it clears needsReview and nothing else.
+      if (state.needsReviewOnly) {
+        bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.markReviewed'), onclick: onMarkReviewedSelected }));
+      }
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkUse'), onclick: onBulkUseSelected }));
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkVoid'), onclick: onBulkVoidSelected }));
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkGrace'), onclick: onBulkGraceUseSelected }));

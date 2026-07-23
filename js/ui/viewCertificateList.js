@@ -62,7 +62,7 @@ CertApp.viewCertificateList = (function () {
     { group: 'Bed & Breakfast (2인)', category: 'SC_FB_ROOMS', amount: 847000, name: 'Premium Riverview + 조식', detail: 'Bed & Breakfast (Premium Riverview Room)' },
     { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 180000, name: 'Zest 1인', detail: 'Zest - 1 pax' },
     { group: 'F&B (Zest)', category: 'SC_FB_ROOMS', amount: 360000, name: 'Zest 2인', detail: 'Zest - 2 pax' },
-    { group: 'Pulse 8', category: 'SC_PULSE8', amount: 45000, name: 'Pulse 8 1Day Pass', detail: 'Pulse 8 1Day Pass' },
+    { group: 'Pulse 8', category: 'SC_PULSE8', amount: 55000, name: 'Pulse 8 1Day Pass', detail: 'Pulse 8 1Day Pass' },
     { group: 'Gift Certificate', category: 'GC_100000', amount: 100000, name: 'Cash Voucher (10만원권)', detail: 'Cash Voucher' }
   ];
 
@@ -309,7 +309,7 @@ CertApp.viewCertificateList = (function () {
   function defaultAmountFor(category) {
     if (category === CertApp.CATEGORY.GC_50000) return 50000;
     if (category === CertApp.CATEGORY.GC_100000) return 100000;
-    if (category === CertApp.CATEGORY.SC_PULSE8) return 45000;   // one fixed 45,000원 day pass
+    if (category === CertApp.CATEGORY.SC_PULSE8) return 55000;   // one fixed 55,000원 day pass
     return '';
   }
 
@@ -470,7 +470,9 @@ CertApp.viewCertificateList = (function () {
     var qty = parseInt(q.qty, 10);
     if (!qty || qty < 1) { ui.toast(t('cl.quickFill.needQty'), 'warn'); return; }
     if (qty > 500) { ui.toast(t('cl.quickFill.tooMany'), 'warn'); return; }
-    var startNo = (q.startNo || '').trim();
+    // Blank 시작 증서번호 falls back to the suggested next number — the same one the placeholder
+    // and the end-number readout show, so 생성 never rejects a batch the UI just previewed.
+    var startNo = (q.startNo || '').trim() || (q._suggestedNo || '');
     if (!startNo || !incrementCertNo(startNo, 0)) { ui.toast(t('cl.quickFill.badNo'), 'warn'); return; }
     if (!q.amountA) { ui.toast(t('cl.bulkIssue.needFields'), 'warn'); return; }
 
@@ -551,15 +553,24 @@ CertApp.viewCertificateList = (function () {
     var startInput = ui.el('input', { type: 'text', class: 'cert-no-input', value: q.startNo, placeholder: t('cl.quickFill.startPlaceholder'), style: 'width:120px' });
     var endLabel = ui.el('span', { class: 'quickfill-end' });
     var qtyInput = ui.el('input', { type: 'number', min: '1', value: q.qty, style: 'width:64px' });
+    // Next number for this category, shown as the faint placeholder. Stashed on the state so the
+    // end-number readout AND 생성 both fall back to it when 시작 증서번호 is left blank — otherwise
+    // just typing a 수량 showed nothing and 생성 rejected the batch, even though the suggested
+    // start was right there on screen.
+    q._suggestedNo = suggestNextCertNo(q.category);
+    function effectiveStart() { return (q.startNo || '').trim() || (q._suggestedNo || ''); }
     function updateEnd() {
       var n = parseInt(q.qty, 10);
-      var s = (q.startNo || '').trim();
-      endLabel.textContent = (s && incrementCertNo(s, 0) && n >= 1) ? ('~ ' + incrementCertNo(s, n - 1)) : '';
+      var s = effectiveStart();
+      if (!s || !incrementCertNo(s, 0) || !(n >= 1)) { endLabel.textContent = ''; return; }
+      var last = incrementCertNo(s, n - 1);
+      // Spell out the assumed start too when it came from the suggestion rather than typed input.
+      endLabel.textContent = (q.startNo || '').trim() ? ('~ ' + last) : (s + ' ~ ' + last);
     }
     startInput.addEventListener('input', function () { q.startNo = startInput.value; updateEnd(); });
     qtyInput.addEventListener('input', function () { q.qty = qtyInput.value; updateEnd(); });
-    // Suggest the next number for the chosen category (Tab accepts it, then updates the end readout).
-    wireCertNoSuggestion(startInput, suggestNextCertNo(q.category), function (v) { q.startNo = v; updateEnd(); });
+    // Tab on the empty field accepts the suggestion, then refreshes the end readout.
+    wireCertNoSuggestion(startInput, q._suggestedNo, function (v) { q.startNo = v; updateEnd(); });
     updateEnd();
 
     var amountField = amountFieldFor(q.category, q.amountA, function (v) { q.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
@@ -1118,7 +1129,10 @@ CertApp.viewCertificateList = (function () {
       Object.assign({ key: 'category', width: 132, align: 'left', format: function (v) { return CertApp.CATEGORY_LABEL[v] || v; } }, sortableHeader(t('cl.col.category'), 'category')),
       Object.assign({ key: 'status', width: 124, format: function (v, r) { return editableStatus(r); } }, sortableHeader(t('cl.col.status'), 'status')),
       Object.assign({ key: 'amountA', width: 92, align: 'right', format: function (v, r) { return editableAmount(r); } }, sortableHeader(t('cl.col.amountA'), 'amountA')),
-      { key: 'paymentType', label: t('cl.col.paymentType'), width: 84, format: function (v, r) { return editableText(r, 'paymentType'); } },
+      { key: 'paymentType', label: t('cl.col.paymentType'), width: 84, format: function (v, r) {
+        // Unlocked rows edit the raw stored value; locked rows show the canonical label (CA -> Cash).
+        return unlockedIds[r.id] ? editableText(r, 'paymentType') : CertApp.displayPaymentType(cellValue(r, 'paymentType'));
+      } },
       Object.assign({ key: 'issuedDate', width: 100, format: function (v, r) { return editableDate(r, 'issuedDate'); } }, sortableHeader(t('cl.col.issuedDate'), 'issuedDate')),
       Object.assign({ key: 'expiryDate', width: 100, format: function (v, r) { return editableDate(r, 'expiryDate'); } }, sortableHeader(t('cl.col.expiryDate'), 'expiryDate')),
       Object.assign({ key: 'usedDate', width: 100, format: function (v, r) { return editableDate(r, 'usedDate'); } }, sortableHeader(t('cl.col.usedDate'), 'usedDate')),

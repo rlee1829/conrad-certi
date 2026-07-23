@@ -55,6 +55,16 @@ CertApp.displayStatusLabel = function (status) {
   return CertApp.STATUS_DISPLAY_LABEL[status] || status;
 };
 
+// The imported history uses a few shorthand payment codes for methods that already have a
+// canonical label — show those under the canonical name so the ledger reads consistently.
+// DISPLAY ONLY: the stored paymentType is never rewritten, so the original source value stays
+// intact for audit. Keyed by the uppercased/trimmed stored value.
+CertApp.PAYMENT_DISPLAY_ALIAS = { CA: 'Cash' };
+CertApp.displayPaymentType = function (v) {
+  if (v === null || v === undefined || v === '') return v;
+  return CertApp.PAYMENT_DISPLAY_ALIAS[String(v).trim().toUpperCase()] || v;
+};
+
 function addYearsIso(isoDate, years) {
   var d = new Date(isoDate);
   d.setFullYear(d.getFullYear() + years);

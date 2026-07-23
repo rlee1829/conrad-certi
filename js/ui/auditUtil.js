@@ -27,6 +27,7 @@ CertApp.auditUtil = (function () {
     if (field === 'amountA' || field === 'outletPostingAmountB' || field === 'arPostingAmountC') return ui.formatCurrency(v);
     if (field === 'category') return CertApp.CATEGORY_LABEL[v] || v;
     if (field === 'status') return CertApp.displayStatusLabel(v);
+    if (field === 'paymentType') return String(CertApp.displayPaymentType(v));
     return String(v);
   }
 

@@ -74,7 +74,7 @@ CertApp.ui.openCertificateDetail = function (certificateId) {
 
     body.push(ui.el('div', { class: 'cert-detail-grid' }, [
       fieldCell('cl.col.amountA', ui.formatCurrency(rec.amountA)),
-      fieldCell('cl.col.paymentType', rec.paymentType),
+      fieldCell('cl.col.paymentType', CertApp.displayPaymentType(rec.paymentType)),
       fieldCell('cl.col.issuedDate', rec.issuedDate),
       fieldCell('cl.col.expiryDate', rec.expiryDate),
       fieldCell('cl.col.usedDate', rec.usedDate),

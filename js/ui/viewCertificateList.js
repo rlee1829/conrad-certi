@@ -1064,13 +1064,55 @@ CertApp.viewCertificateList = (function () {
       arInput.addEventListener('input', function () {
         if (Number(arInput.value) > 0 && !miscDateInput.value) miscDateInput.value = today;
       });
+
+      // 잔액 환급 (partly-spent 금액권): entering a 매출금액(B) below the face value leaves a
+      // balance. Korean law lets the guest take that balance back in cash once usage passes the
+      // threshold, so surface the balance + whether it qualifies, and let it be recorded here
+      // instead of leaving an unexplained A-B gap.
+      var amountInput = ui.el('input', { type: 'number', value: split.outletPostingAmountB });
+      var balanceCb = ui.el('input', { type: 'checkbox' });
+      var balanceDateInput = ui.el('input', { type: 'date', value: today });
+      var balanceInfo = ui.el('div', { class: 'balance-info' });
+      var balanceRow = ui.el('div', { class: 'balance-refund-row' }, [
+        ui.el('label', {}, [balanceCb, ' ' + t('cl.bulkUse.refundBalance')]),
+        balanceDateInput
+      ]);
+      function balanceOf() { return acc.computeBalanceRefund(rec.amountA, Number(amountInput.value)); }
+      function updateBalance() {
+        var b = balanceOf();
+        var hasBalance = b.refundAmount > 0;
+        balanceRow.style.display = hasBalance ? '' : 'none';
+        if (!hasBalance) {
+          balanceInfo.textContent = '';
+          balanceInfo.classList.remove('is-eligible');
+          balanceCb.checked = false;
+          return;
+        }
+        balanceInfo.textContent = t('cl.bulkUse.balanceInfo', {
+          pct: Math.round(b.usedRatio * 100),
+          balance: ui.formatCurrency(b.refundAmount),
+          verdict: t(b.eligible ? 'cl.bulkUse.balanceEligible' : 'cl.bulkUse.balanceNotEligible',
+            { pct: Math.round(acc.balanceRefundRate(rec.amountA) * 100) })
+        });
+        balanceInfo.classList.toggle('is-eligible', b.eligible);
+        // Track eligibility in both directions until the cashier touches the box — otherwise
+        // editing 60,000 down to 50,000 would leave it ticked and silently refund a balance the
+        // law does not require. Once touched, their choice wins (a refund can still be granted).
+        if (!balanceCb.dataset.touched) balanceCb.checked = b.eligible;
+      }
+      balanceCb.addEventListener('change', function () { balanceCb.dataset.touched = '1'; });
+      amountInput.addEventListener('input', updateBalance);
+      updateBalance();
+
       return {
         rec: rec,
         usedDateInput: ui.el('input', { type: 'date', value: today }),
-        amountInput: ui.el('input', { type: 'number', value: split.outletPostingAmountB }),
+        amountInput: amountInput,
         arInput: arInput,
         miscDateInput: miscDateInput,
-        billNoInput: ui.el('input', { type: 'text', value: rec.billNo || '', placeholder: t('cl.bulkUse.billNoPlaceholder') })
+        billNoInput: ui.el('input', { type: 'text', value: rec.billNo || '', placeholder: t('cl.bulkUse.billNoPlaceholder') }),
+        balanceCb: balanceCb, balanceDateInput: balanceDateInput,
+        balanceInfo: balanceInfo, balanceRow: balanceRow, balanceOf: balanceOf
       };
     });
     var body = rowsData.map(function (rd) {
@@ -1078,6 +1120,8 @@ CertApp.viewCertificateList = (function () {
         ui.el('div', { style: 'font-weight:700' }, [rd.rec.certificateNo + ' · ' + ui.formatCurrency(rd.rec.amountA)]),
         fieldRow(t('cl.bulkUse.usedDate'), rd.usedDateInput),
         fieldRow(t('cl.bulkUse.amountB'), rd.amountInput),
+        rd.balanceInfo,
+        rd.balanceRow,
         fieldRow(t('cl.bulkUse.amountC'), rd.arInput),
         fieldRow(t('cl.col.miscRevDate'), rd.miscDateInput),
         fieldRow(t('cl.col.billNo'), rd.billNoInput)
@@ -1092,15 +1136,26 @@ CertApp.viewCertificateList = (function () {
         missing[0].miscDateInput.focus();
         return false;
       }
+      var missingRefundDate = rowsData.filter(function (rd) { return rd.balanceCb.checked && !rd.balanceDateInput.value; });
+      if (missingRefundDate.length) {
+        ui.toast(t('cl.bulkUse.refundDateRequired', { certNo: missingRefundDate[0].rec.certificateNo }), 'warn');
+        missingRefundDate[0].balanceDateInput.focus();
+        return false;
+      }
       var inputsById = {};
       rowsData.forEach(function (rd) {
-        inputsById[rd.rec.id] = {
+        var input = {
           usedDate: rd.usedDateInput.value,
           outletPostingAmountB: Number(rd.amountInput.value),
           arPostingAmountC: Number(rd.arInput.value),
           miscRevPostingDate: rd.miscDateInput.value || null,
           billNo: rd.billNoInput.value.trim() || null
         };
+        if (rd.balanceCb.checked) {
+          input.refundAmount = rd.balanceOf().refundAmount;
+          input.refundDate = rd.balanceDateInput.value;
+        }
+        inputsById[rd.rec.id] = input;
       });
       CertApp.certificateWorkflow.bulkUseCertificates(inputsById).then(function (result) {
         reportBulkResult(result.count, result.errors, t('cl.verb.use'));

@@ -61,6 +61,31 @@ CertApp.accounting = (function () {
   // handed back (refundAmount). refundAmount is stored rather than derived precisely so a refund
   // reconciles to 0 here instead of masquerading as an unaccounted balance; it is absent (=> 0)
   // on every record that was never refunded, so this is unchanged for all existing data.
+  // Korean gift-certificate (금액권) balance refund: once a guest has spent at least this share
+  // of a voucher's face value, they can demand the unused balance back in cash. e.g. 100,000원
+  // voucher, 60,000원 spent -> the remaining 40,000원 must be refunded.
+  // NOTE: Conrad Seoul applies a flat 60%. The 신유형 상품권 표준약관 baseline is tiered instead
+  // (60% at 10,000원 or below, 80% above), so if policy should follow the standard, change
+  // balanceRefundRate() to return the tiered rate — every caller reads it through this function.
+  var GC_BALANCE_REFUND_RATE = 0.6;
+  function balanceRefundRate(amountA) { return GC_BALANCE_REFUND_RATE; }
+
+  // Split a partially-spent voucher: what the guest actually consumed becomes real outlet
+  // revenue (B), and the untouched balance is handed back as cash (refundAmount) — so the record
+  // still reconciles to 0 in varianceABC. `eligible` reports whether the law actually compels
+  // the refund at this usage level; the UI shows it, but never blocks a manager's decision.
+  function computeBalanceRefund(amountA, usedAmount) {
+    var a = amountA || 0;
+    var used = Math.min(Math.max(usedAmount || 0, 0), a);
+    var ratio = a > 0 ? used / a : 0;
+    return {
+      outletPostingAmountB: used,
+      refundAmount: a - used,
+      usedRatio: ratio,
+      eligible: a > 0 && used < a && ratio >= balanceRefundRate(a)
+    };
+  }
+
   function varianceABC(record) {
     return (record.amountA || 0) - (record.outletPostingAmountB || 0) - (record.arPostingAmountC || 0)
       - (record.refundAmount || 0);
@@ -79,6 +104,8 @@ CertApp.accounting = (function () {
     computeLateUseSplit: computeLateUseSplit,
     REFUND_PENALTY_RATE: REFUND_PENALTY_RATE,
     computeRefundSplit: computeRefundSplit,
+    balanceRefundRate: balanceRefundRate,
+    computeBalanceRefund: computeBalanceRefund,
     varianceABC: varianceABC,
     usedAmountBC: usedAmountBC
   };

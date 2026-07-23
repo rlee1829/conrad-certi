@@ -294,6 +294,13 @@ CertApp.certificateWorkflow = (function () {
     // Posting date for the misc income booked at use time (late use splits 10% into C) — kept
     // separate from usedDate since the two can land in different accounting periods.
     if (input.miscRevPostingDate) rec.miscRevPostingDate = input.miscRevPostingDate;
+    // Balance refund on a partly-spent 금액권: the consumed part is already in B above, and the
+    // untouched balance is handed back as cash. Recording it here (rather than leaving it as an
+    // A-B gap) keeps varianceABC at 0 — the voucher is fully settled, not still outstanding.
+    if (input.refundAmount !== undefined && input.refundAmount !== null) {
+      rec.refundAmount = input.refundAmount;
+      rec.refundDate = input.refundDate || usedDate;
+    }
     rec.status = CertApp.STATUS.USED;
     return persist(rec).then(function () {
       return logAudit(CertApp.AUDIT_ACTION.USE, before, clone(rec));

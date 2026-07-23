@@ -1069,43 +1069,46 @@ CertApp.viewCertificateList = (function () {
         if (Number(arInput.value) > 0 && !miscDateInput.value) miscDateInput.value = today;
       });
 
-      // 잔액 환급 (partly-spent 금액권): entering a 매출금액(B) below the face value leaves a
-      // balance. Korean law lets the guest take that balance back in cash once usage passes the
-      // threshold, so surface the balance + whether it qualifies, and let it be recorded here
-      // instead of leaving an unexplained A-B gap.
+      // 환불액 is a real, always-visible amount field — a partly-spent 금액권 (guest used 60,000
+      // of a 100,000 voucher and takes the rest back) is entered by lowering 매출금액(B), and the
+      // balance auto-fills here. It stays editable so an unusual split can be typed directly,
+      // and the readout below shows the usage %, whether the law compels the refund, and whether
+      // A = B + C + 환불액 still balances.
       var amountInput = ui.el('input', { type: 'number', value: split.outletPostingAmountB });
-      var balanceCb = ui.el('input', { type: 'checkbox' });
-      var balanceDateInput = ui.el('input', { type: 'date', value: today });
+      var refundInput = ui.el('input', { type: 'number', value: 0 });
+      var refundDateInput = ui.el('input', { type: 'date', value: today });
+      var refundDateRow = fieldRow(t('cd.field.refundDate'), refundDateInput);
       var balanceInfo = ui.el('div', { class: 'balance-info' });
-      var balanceRow = ui.el('div', { class: 'balance-refund-row' }, [
-        ui.el('label', {}, [balanceCb, ' ' + t('cl.bulkUse.refundBalance')]),
-        balanceDateInput
-      ]);
-      function balanceOf() { return acc.computeBalanceRefund(rec.amountA, Number(amountInput.value)); }
+
       function updateBalance() {
-        var b = balanceOf();
-        var hasBalance = b.refundAmount > 0;
-        balanceRow.style.display = hasBalance ? '' : 'none';
-        if (!hasBalance) {
-          balanceInfo.textContent = '';
-          balanceInfo.classList.remove('is-eligible');
-          balanceCb.checked = false;
-          return;
+        var A = rec.amountA || 0;
+        var B = Number(amountInput.value) || 0;
+        var C = Number(arInput.value) || 0;
+        // Auto-fill the leftover until the cashier types their own figure.
+        if (!refundInput.dataset.touched) refundInput.value = Math.max(A - B - C, 0);
+        var refund = Number(refundInput.value) || 0;
+        var variance = A - B - C - refund;
+        var b = acc.computeBalanceRefund(A, B);
+
+        refundDateRow.style.display = refund > 0 ? '' : 'none';
+
+        var parts = [];
+        if (B < A) {
+          parts.push(t('cl.bulkUse.balanceInfo', {
+            pct: Math.round(b.usedRatio * 100),
+            balance: ui.formatCurrency(A - B),
+            verdict: t(b.eligible ? 'cl.bulkUse.balanceEligible' : 'cl.bulkUse.balanceNotEligible',
+              { pct: Math.round(acc.balanceRefundRate(A) * 100) })
+          }));
         }
-        balanceInfo.textContent = t('cl.bulkUse.balanceInfo', {
-          pct: Math.round(b.usedRatio * 100),
-          balance: ui.formatCurrency(b.refundAmount),
-          verdict: t(b.eligible ? 'cl.bulkUse.balanceEligible' : 'cl.bulkUse.balanceNotEligible',
-            { pct: Math.round(acc.balanceRefundRate(rec.amountA) * 100) })
-        });
-        balanceInfo.classList.toggle('is-eligible', b.eligible);
-        // Track eligibility in both directions until the cashier touches the box — otherwise
-        // editing 60,000 down to 50,000 would leave it ticked and silently refund a balance the
-        // law does not require. Once touched, their choice wins (a refund can still be granted).
-        if (!balanceCb.dataset.touched) balanceCb.checked = b.eligible;
+        if (variance !== 0) parts.push(t('cl.bulkUse.varianceWarn', { amount: ui.formatCurrency(variance) }));
+        balanceInfo.textContent = parts.join('  ·  ');
+        balanceInfo.classList.toggle('is-eligible', B < A && b.eligible && variance === 0);
+        balanceInfo.classList.toggle('is-unbalanced', variance !== 0);
       }
-      balanceCb.addEventListener('change', function () { balanceCb.dataset.touched = '1'; });
+      refundInput.addEventListener('input', function () { refundInput.dataset.touched = '1'; updateBalance(); });
       amountInput.addEventListener('input', updateBalance);
+      arInput.addEventListener('input', updateBalance);
       updateBalance();
 
       return {
@@ -1115,8 +1118,8 @@ CertApp.viewCertificateList = (function () {
         arInput: arInput,
         miscDateInput: miscDateInput,
         billNoInput: ui.el('input', { type: 'text', value: rec.billNo || '', placeholder: t('cl.bulkUse.billNoPlaceholder') }),
-        balanceCb: balanceCb, balanceDateInput: balanceDateInput,
-        balanceInfo: balanceInfo, balanceRow: balanceRow, balanceOf: balanceOf
+        refundInput: refundInput, refundDateInput: refundDateInput,
+        refundDateRow: refundDateRow, balanceInfo: balanceInfo
       };
     });
     var body = rowsData.map(function (rd) {
@@ -1124,10 +1127,11 @@ CertApp.viewCertificateList = (function () {
         ui.el('div', { style: 'font-weight:700' }, [rd.rec.certificateNo + ' · ' + ui.formatCurrency(rd.rec.amountA)]),
         fieldRow(t('cl.bulkUse.usedDate'), rd.usedDateInput),
         fieldRow(t('cl.bulkUse.amountB'), rd.amountInput),
-        rd.balanceInfo,
-        rd.balanceRow,
         fieldRow(t('cl.bulkUse.amountC'), rd.arInput),
         fieldRow(t('cl.col.miscRevDate'), rd.miscDateInput),
+        fieldRow(t('cd.field.refundAmount'), rd.refundInput),
+        rd.refundDateRow,
+        rd.balanceInfo,
         fieldRow(t('cl.col.billNo'), rd.billNoInput)
       ]);
     });
@@ -1140,14 +1144,15 @@ CertApp.viewCertificateList = (function () {
         missing[0].miscDateInput.focus();
         return false;
       }
-      var missingRefundDate = rowsData.filter(function (rd) { return rd.balanceCb.checked && !rd.balanceDateInput.value; });
+      var missingRefundDate = rowsData.filter(function (rd) { return Number(rd.refundInput.value) > 0 && !rd.refundDateInput.value; });
       if (missingRefundDate.length) {
         ui.toast(t('cl.bulkUse.refundDateRequired', { certNo: missingRefundDate[0].rec.certificateNo }), 'warn');
-        missingRefundDate[0].balanceDateInput.focus();
+        missingRefundDate[0].refundDateInput.focus();
         return false;
       }
       var inputsById = {};
       rowsData.forEach(function (rd) {
+        var refund = Number(rd.refundInput.value) || 0;
         var input = {
           usedDate: rd.usedDateInput.value,
           outletPostingAmountB: Number(rd.amountInput.value),
@@ -1155,9 +1160,9 @@ CertApp.viewCertificateList = (function () {
           miscRevPostingDate: rd.miscDateInput.value || null,
           billNo: rd.billNoInput.value.trim() || null
         };
-        if (rd.balanceCb.checked) {
-          input.refundAmount = rd.balanceOf().refundAmount;
-          input.refundDate = rd.balanceDateInput.value;
+        if (refund > 0) {
+          input.refundAmount = refund;
+          input.refundDate = rd.refundDateInput.value;
         }
         inputsById[rd.rec.id] = input;
       });

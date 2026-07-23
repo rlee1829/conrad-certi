@@ -489,4 +489,4 @@ input.amount-input { text-align: right; }
 /* 사용처리 모달의 잔액 환급 안내 (부분 사용된 금액권) — 환급 대상이면 강조. */
 .balance-info { font-size: 12px; margin: 2px 0 4px; color: var(--muted); }
 .balance-info.is-eligible { color: var(--accent-dark); font-weight: 700; }
-.balance-refund-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.balance-info.is-unbalanced { color: var(--danger); font-weight: 700; }

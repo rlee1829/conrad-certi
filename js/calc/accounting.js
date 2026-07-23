@@ -56,15 +56,14 @@ CertApp.accounting = (function () {
     return { outletPostingAmountB: 0, arPostingAmountC: penalty, refundAmount: a - penalty };
   }
 
+  // Reconciliation check — must land on 0 once a certificate is fully resolved. Every won of the
+  // face value has to end up in exactly one bucket: real revenue (B), misc income (C), or cash
+  // handed back (refundAmount). refundAmount is stored rather than derived precisely so a refund
+  // reconciles to 0 here instead of masquerading as an unaccounted balance; it is absent (=> 0)
+  // on every record that was never refunded, so this is unchanged for all existing data.
   function varianceABC(record) {
-    return (record.amountA || 0) - (record.outletPostingAmountB || 0) - (record.arPostingAmountC || 0);
-  }
-
-  // Cash actually paid back on a refund-void — derived, never stored (same rule as varianceABC /
-  // usedAmountBC). It IS the record's 차이(A-B-C): the part of the face value that left as cash
-  // rather than being recognized as revenue (B) or misc income (C).
-  function refundAmount(record) {
-    return varianceABC(record);
+    return (record.amountA || 0) - (record.outletPostingAmountB || 0) - (record.arPostingAmountC || 0)
+      - (record.refundAmount || 0);
   }
 
   // Total value actually consumed when a certificate is used: real revenue (B) + misc income
@@ -80,7 +79,6 @@ CertApp.accounting = (function () {
     computeLateUseSplit: computeLateUseSplit,
     REFUND_PENALTY_RATE: REFUND_PENALTY_RATE,
     computeRefundSplit: computeRefundSplit,
-    refundAmount: refundAmount,
     varianceABC: varianceABC,
     usedAmountBC: usedAmountBC
   };

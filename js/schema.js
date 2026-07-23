@@ -154,7 +154,7 @@ CertApp.CERTIFICATE_FIELDS = [
   'id', 'category', 'certificateNo', 'issuedDate', 'expiryDate', 'status', 'dc',
   'amountA', 'paymentType', 'certificateDetail', 'usedDate', 'outletPostingAmountB',
   'miscRevPostingDate', 'arPostingAmountC', 'billNo', 'sellerOperaId',
-  'voidReason', 'refundDate', 'graceUseDate', 'mateApprovalNo', 'discountReceiptNote',
+  'voidReason', 'refundDate', 'refundAmount', 'graceUseDate', 'mateApprovalNo', 'discountReceiptNote',
   'needsReview', 'sourceRowRef', 'createdAt', 'updatedAt'
 ];
 

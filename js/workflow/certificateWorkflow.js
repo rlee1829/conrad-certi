@@ -235,6 +235,7 @@ CertApp.certificateWorkflow = (function () {
       sellerOperaId: input.sellerOperaId || null,
       voidReason: null,
       refundDate: null,
+      refundAmount: null,
       graceUseDate: null,
       mateApprovalNo: null,
       // Second free-text note (right of billNo): discount applied / cash-receipt issued, etc.
@@ -311,13 +312,15 @@ CertApp.certificateWorkflow = (function () {
     if (reason === CertApp.VOID_REASON.REFUND) {
       rec.refundDate = input.refundDate || todayIso();
       // Refund with a retained penalty: book the penalty to AR Posting(C) as misc income and
-      // leave amountA at face value — the cash paid back is the derived remainder (see
-      // accounting.computeRefundSplit / refundAmount). Recorded in the Misc Revenue ledger too,
-      // same as a write-off, so the misc income balance shows where it actually came from.
+      // leave amountA at face value. The cash handed back is stored in refundAmount (NOT left as
+      // an implicit remainder) so varianceABC still nets to 0 — a refunded certificate is fully
+      // accounted for, not an open balance. Also recorded in the Misc Revenue ledger, same as a
+      // write-off, so the misc income balance shows where it actually came from.
       if (input.applyPenalty) {
         var split = CertApp.accounting.computeRefundSplit(rec.amountA);
         rec.outletPostingAmountB = split.outletPostingAmountB;
         rec.arPostingAmountC = split.arPostingAmountC;
+        rec.refundAmount = split.refundAmount;
         if (split.arPostingAmountC > 0) {
           var penaltyEntry = {
             id: CertApp.uuid(), certificateId: rec.id, certificateNo: rec.certificateNo, category: rec.category,
@@ -330,6 +333,10 @@ CertApp.certificateWorkflow = (function () {
           CertApp.cache.miscRevenue.push(penaltyEntry);
           miscOps.push(CertApp.db.put('miscRevenueEntries', penaltyEntry));
         }
+      } else {
+        // Plain refund, no penalty retained: the whole face value went back to the guest, so it
+        // is refunded cash rather than an unaccounted balance — same reason as above.
+        rec.refundAmount = rec.amountA || 0;
       }
     }
     return persist(rec).then(function () {
@@ -510,6 +517,7 @@ CertApp.certificateWorkflow = (function () {
     if (patch.arPostingAmountC !== undefined) rec.arPostingAmountC = patch.arPostingAmountC;
     if (patch.voidReason !== undefined) rec.voidReason = patch.voidReason;
     if (patch.refundDate !== undefined) rec.refundDate = patch.refundDate;
+    if (patch.refundAmount !== undefined) rec.refundAmount = patch.refundAmount;
     if (patch.graceUseDate !== undefined) rec.graceUseDate = patch.graceUseDate;
     if (patch.certificateDetail !== undefined) rec.certificateDetail = patch.certificateDetail;
     if (patch.billNo !== undefined) rec.billNo = patch.billNo;

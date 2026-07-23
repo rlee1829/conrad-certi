@@ -82,10 +82,10 @@ CertApp.ui.openCertificateDetail = function (certificateId) {
       fieldCell('cl.col.arC', ui.formatCurrency(rec.arPostingAmountC)),
       fieldCell('cd.field.voidReason', rec.voidReason),
       fieldCell('cd.field.refundDate', rec.refundDate),
-      // Cash actually paid back = face value minus the retained penalty. Derived (it's the
-      // record's A-B-C), so it's only meaningful once the certificate is a REFUND void.
-      fieldCell('cd.field.refundAmount', rec.voidReason === CertApp.VOID_REASON.REFUND
-        ? ui.formatCurrency(CertApp.accounting.refundAmount(rec)) : null),
+      // Cash actually handed back = face value minus any retained penalty. Stored (not derived)
+      // so it counts as an accounted bucket in varianceABC rather than an open balance.
+      fieldCell('cd.field.refundAmount', (rec.refundAmount === null || rec.refundAmount === undefined)
+        ? null : ui.formatCurrency(rec.refundAmount)),
       fieldCell('cd.field.graceUseDate', rec.graceUseDate),
       fieldCell('cd.field.mateApprovalNo', rec.mateApprovalNo),
       fieldCell('cl.col.billNo', rec.billNo),

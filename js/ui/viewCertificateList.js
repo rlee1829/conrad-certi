@@ -833,16 +833,15 @@ CertApp.viewCertificateList = (function () {
     if (newStatus === CertApp.STATUS.ACTIVE) {
       // Reverting to ACTIVE means "still outstanding" — clear every resolution-only field so
       // manually undoing a mistaken status (e.g. USED -> ACTIVE) doesn't leave stale used/void
-      // data behind. amountA is left alone: if it came from VOID (already zeroed there's no
-      // original face value left on the record to restore automatically).
+      // data behind. amountA is deliberately left alone: it is the certificate's face value,
+      // which a status change never alters.
       setFieldWithHighlight(rec, 'usedDate', null);
       setFieldWithHighlight(rec, 'outletPostingAmountB', null);
       setFieldWithHighlight(rec, 'arPostingAmountC', null);
       setFieldWithHighlight(rec, 'voidReason', null);
       setFieldWithHighlight(rec, 'refundDate', null);
+      setFieldWithHighlight(rec, 'refundAmount', null);
       setFieldWithHighlight(rec, 'graceUseDate', null);
-    } else if (newStatus === CertApp.STATUS.VOID) {
-      setFieldWithHighlight(rec, 'amountA', 0);
     } else if (newStatus === CertApp.STATUS.USED) {
       var late = isLateUse(rec, today);
       var s = late ? acc.computeLateUseSplit(rec.amountA) : { outletPostingAmountB: rec.amountA, arPostingAmountC: 0 };
@@ -1185,8 +1184,11 @@ CertApp.viewCertificateList = (function () {
       { key: 'miscRevPostingDate', label: t('cl.col.miscRevDate'), width: 118, format: function (v, r) { return editableDate(r, 'miscRevPostingDate'); } },
       Object.assign({ key: 'arPostingAmountC', width: 96, align: 'right', format: function (v, r) { return editableNumber(r, 'arPostingAmountC'); } }, sortableHeader(t('cl.col.arC'), 'arPostingAmountC')),
       { key: 'variance', label: t('cl.col.variance'), width: 96, align: 'right', format: function (v, r) {
-        var a = cellValue(r, 'amountA') || 0, b = cellValue(r, 'outletPostingAmountB') || 0, c = cellValue(r, 'arPostingAmountC') || 0;
-        return ui.formatCurrency(a - b - c);
+        // Mirrors accounting.varianceABC, but off the pending-edit values so an unlocked row
+        // recomputes live as you type. Refunded cash is an accounted bucket, not a discrepancy.
+        var a = cellValue(r, 'amountA') || 0, b = cellValue(r, 'outletPostingAmountB') || 0;
+        var c = cellValue(r, 'arPostingAmountC') || 0, refund = cellValue(r, 'refundAmount') || 0;
+        return ui.formatCurrency(a - b - c - refund);
       } },
       { key: 'certificateDetail', label: t('cl.col.detail'), width: 150, format: function (v, r) { return editableText(r, 'certificateDetail'); } },
       { key: 'billNo', label: t('cl.col.billNo'), width: 150, align: 'left', format: function (v, r) { return editableText(r, 'billNo'); } },

@@ -291,6 +291,9 @@ CertApp.certificateWorkflow = (function () {
 
     rec.usedDate = usedDate;
     rec.billNo = input.billNo || rec.billNo;
+    // Posting date for the misc income booked at use time (late use splits 10% into C) — kept
+    // separate from usedDate since the two can land in different accounting periods.
+    if (input.miscRevPostingDate) rec.miscRevPostingDate = input.miscRevPostingDate;
     rec.status = CertApp.STATUS.USED;
     return persist(rec).then(function () {
       return logAudit(CertApp.AUDIT_ACTION.USE, before, clone(rec));

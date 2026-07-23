@@ -86,6 +86,23 @@ CertApp.viewCertificateList = (function () {
   // legacy records keeps the full GC_AMOUNT_OPTIONS so existing 50,000 vouchers stay editable.
   var NEW_ISSUE_GC_OPTIONS = [100000];
 
+  // ---- persisted change reasons (inline-edit save confirmation) ----
+  // The same handful of reasons get typed over and over ("증서번호 오타수정", ...), so keep the
+  // recent ones and offer them back: most recent as a Tab-able placeholder, all of them as a
+  // <datalist>. Falls back to a sensible default the very first time.
+  var EDIT_REASONS_KEY = 'certapp_edit_reasons';
+  var EDIT_REASONS_MAX = 20;
+  function loadEditReasons() {
+    try { return JSON.parse(localStorage.getItem(EDIT_REASONS_KEY)) || []; } catch (e) { return []; }
+  }
+  function rememberEditReason(reason) {
+    reason = (reason || '').trim();
+    if (!reason) return;
+    var list = loadEditReasons().filter(function (r) { return r !== reason; });
+    list.unshift(reason);
+    try { localStorage.setItem(EDIT_REASONS_KEY, JSON.stringify(list.slice(0, EDIT_REASONS_MAX))); } catch (e) {}
+  }
+
   // ---- persisted custom service-detail entries (added via "기타") ----
   var CUSTOM_DETAILS_KEY = 'certapp_custom_details';
   function loadCustomDetails() {
@@ -367,7 +384,7 @@ CertApp.viewCertificateList = (function () {
 
   // Next certificate number to issue for a category = the highest existing number (across the
   // certificate list AND any rows already entered in this panel) + 1, preserving its prefix and
-  // zero-padding. Shown as a faint placeholder; Tab accepts it (see wireCertNoSuggestion).
+  // zero-padding. Shown as a faint placeholder; Tab accepts it (see wireTabSuggestion).
   function suggestNextCertNo(category, excludeRow) {
     var maxNum = -1, maxNo = '';
     function consider(no) {
@@ -381,9 +398,10 @@ CertApp.viewCertificateList = (function () {
     return maxNo ? incrementCertNo(maxNo, 1) : '';
   }
 
-  // Faint suggestion in a cert-number input: the placeholder shows the suggested next number, and
-  // pressing Tab on an empty field fills it in (Tab then still advances focus as usual).
-  function wireCertNoSuggestion(input, suggestion, onAccept) {
+  // Faint suggestion in a text input: the placeholder shows the suggested value, and pressing Tab
+  // on an empty field fills it in (Tab then still advances focus as usual). Used for the next
+  // certificate number and for the last-used change reason.
+  function wireTabSuggestion(input, suggestion, onAccept) {
     if (suggestion) input.placeholder = suggestion;
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Tab' && !e.shiftKey && !input.value && suggestion) {
@@ -436,9 +454,15 @@ CertApp.viewCertificateList = (function () {
   // same content twice). "기타(직접입력)" keeps a free-text escape hatch (with datalist typeahead)
   // for anything off the price list — e.g. Pulse 8, which isn't in the catalog.
   function catalogDetailSelect(currentCategory, currentValue, onCatalogPick, onFreeText) {
+    // Only the packages that belong to the selected 종류 — picking Gift Certificate should offer
+    // Cash Voucher and nothing else, not the whole price list.
     var groups = {};
-    PRODUCT_CATALOG.forEach(function (p, i) { (groups[p.group] = groups[p.group] || []).push({ p: p, i: i }); });
-    var catalogDetails = PRODUCT_CATALOG.map(function (p) { return p.detail; });
+    PRODUCT_CATALOG.forEach(function (p, i) {
+      if (p.category !== currentCategory) return;
+      (groups[p.group] = groups[p.group] || []).push({ p: p, i: i });
+    });
+    var catalogDetails = PRODUCT_CATALOG.filter(function (p) { return p.category === currentCategory; })
+      .map(function (p) { return p.detail; });
     var cur = currentValue == null ? '' : String(currentValue);
     var isCatalog = catalogDetails.indexOf(cur) !== -1;
     var isCustom = cur !== '' && !isCatalog;
@@ -587,7 +611,7 @@ CertApp.viewCertificateList = (function () {
     startInput.addEventListener('input', function () { q.startNo = startInput.value; updateEnd(); });
     qtyInput.addEventListener('input', function () { q.qty = qtyInput.value; updateEnd(); });
     // Tab on the empty field accepts the suggestion, then refreshes the end readout.
-    wireCertNoSuggestion(startInput, q._suggestedNo, function (v) { q.startNo = v; updateEnd(); });
+    wireTabSuggestion(startInput, q._suggestedNo, function (v) { q.startNo = v; updateEnd(); });
     updateEnd();
 
     var amountField = amountFieldFor(q.category, q.amountA, function (v) { q.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
@@ -644,7 +668,7 @@ CertApp.viewCertificateList = (function () {
       },
       function (v) { row.certificateDetail = v; });
     var certNoInput = ui.el('input', { type: 'text', class: 'cert-no-input', value: row.certificateNo, oninput: function (e) { row.certificateNo = e.target.value; } });
-    wireCertNoSuggestion(certNoInput, suggestNextCertNo(row.category, row), function (v) { row.certificateNo = v; });
+    wireTabSuggestion(certNoInput, suggestNextCertNo(row.category, row), function (v) { row.certificateNo = v; });
     var issuedInput = dateTextInput(row.issuedDate, function (v) { row.issuedDate = v; row.expiryDate = defaultExpiryFor(row.category, row.issuedDate); renderBulkIssuePanel(); });
     var expiryInput = dateTextInput(row.expiryDate, function (v) { row.expiryDate = v; });
     var amountField = amountFieldFor(row.category, row.amountA, function (v) { row.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
@@ -963,12 +987,28 @@ CertApp.viewCertificateList = (function () {
   function onSaveRowEdits() {
     var ids = Object.keys(pendingRowEdits);
     if (ids.length === 0) return;
-    var noteInput = ui.el('input', { type: 'text', placeholder: t('cl.saveConfirm.notePlaceholder') });
+    var reasons = loadEditReasons();
+    var suggestion = reasons[0] || t('cl.saveConfirm.defaultReason');
+    var dlId = 'edit-reason-dl';
+    var datalist = ui.el('datalist', { id: dlId }, reasons.map(function (r) { return ui.el('option', { value: r }); }));
+    var noteInput = ui.el('input', { type: 'text', list: dlId, autocomplete: 'off' });
+    // Placeholder shows the suggested reason; Tab on the empty field accepts it.
+    wireTabSuggestion(noteInput, suggestion, function () {});
     ui.openModal(t('cl.saveConfirm.title'), [
       ui.el('div', {}, [t('cl.saveConfirm.body', { n: ui.formatNumber(ids.length) })]),
-      fieldRow(t('cl.saveConfirm.noteLabel'), noteInput)
+      fieldRow(t('cl.saveConfirm.noteLabel'), noteInput),
+      datalist
     ], function () {
-      CertApp.certificateWorkflow.bulkCorrectRecords(pendingRowEdits, noteInput.value).then(function (result) {
+      // A change reason is mandatory — an inline edit rewrites ledger figures, so the audit log
+      // must say why. Returning false keeps the modal open (see ui.openModal).
+      var reason = noteInput.value.trim();
+      if (!reason) {
+        ui.toast(t('cl.saveConfirm.reasonRequired'), 'warn');
+        noteInput.focus();
+        return false;
+      }
+      rememberEditReason(reason);
+      CertApp.certificateWorkflow.bulkCorrectRecords(pendingRowEdits, reason).then(function (result) {
         reportBulkResult(result.count, result.errors, t('cl.verb.save'));
         pendingRowEdits = {}; unlockedIds = {}; rowInputs = {}; selectedIds = {};
         // A review session (e.g. clearing every "needs review" row) ends with those rows no
@@ -1016,11 +1056,21 @@ CertApp.viewCertificateList = (function () {
     var rowsData = recs.map(function (rec) {
       var late = isLateUse(rec, today);
       var split = late ? acc.computeLateUseSplit(rec.amountA) : { outletPostingAmountB: rec.amountA, arPostingAmountC: 0 };
+      var arInput = ui.el('input', { type: 'number', value: split.arPostingAmountC });
+      // Misc income posted at use time needs its own posting date — the ledger tracks when the
+      // 잡이익 hit the books separately from the use date. Prefilled with today as soon as a
+      // non-zero misc amount is entered, and required on save (see the confirm handler).
+      var miscDateInput = ui.el('input', { type: 'date', value: split.arPostingAmountC > 0 ? today : '' });
+      arInput.addEventListener('input', function () {
+        if (Number(arInput.value) > 0 && !miscDateInput.value) miscDateInput.value = today;
+      });
       return {
         rec: rec,
         usedDateInput: ui.el('input', { type: 'date', value: today }),
         amountInput: ui.el('input', { type: 'number', value: split.outletPostingAmountB }),
-        arInput: ui.el('input', { type: 'number', value: split.arPostingAmountC })
+        arInput: arInput,
+        miscDateInput: miscDateInput,
+        billNoInput: ui.el('input', { type: 'text', value: rec.billNo || '', placeholder: t('cl.bulkUse.billNoPlaceholder') })
       };
     });
     var body = rowsData.map(function (rd) {
@@ -1028,16 +1078,28 @@ CertApp.viewCertificateList = (function () {
         ui.el('div', { style: 'font-weight:700' }, [rd.rec.certificateNo + ' · ' + ui.formatCurrency(rd.rec.amountA)]),
         fieldRow(t('cl.bulkUse.usedDate'), rd.usedDateInput),
         fieldRow(t('cl.bulkUse.amountB'), rd.amountInput),
-        fieldRow(t('cl.bulkUse.amountC'), rd.arInput)
+        fieldRow(t('cl.bulkUse.amountC'), rd.arInput),
+        fieldRow(t('cl.col.miscRevDate'), rd.miscDateInput),
+        fieldRow(t('cl.col.billNo'), rd.billNoInput)
       ]);
     });
     ui.openModal(t('cl.bulkUse.title', { n: recs.length }), body, function () {
+      // A misc-income amount without its posting date would leave the 잡이익 undated in the
+      // ledger — block the save and point at the first offending certificate.
+      var missing = rowsData.filter(function (rd) { return Number(rd.arInput.value) > 0 && !rd.miscDateInput.value; });
+      if (missing.length) {
+        ui.toast(t('cl.bulkUse.miscDateRequired', { certNo: missing[0].rec.certificateNo }), 'warn');
+        missing[0].miscDateInput.focus();
+        return false;
+      }
       var inputsById = {};
       rowsData.forEach(function (rd) {
         inputsById[rd.rec.id] = {
           usedDate: rd.usedDateInput.value,
           outletPostingAmountB: Number(rd.amountInput.value),
-          arPostingAmountC: Number(rd.arInput.value)
+          arPostingAmountC: Number(rd.arInput.value),
+          miscRevPostingDate: rd.miscDateInput.value || null,
+          billNo: rd.billNoInput.value.trim() || null
         };
       });
       CertApp.certificateWorkflow.bulkUseCertificates(inputsById).then(function (result) {

@@ -55,14 +55,25 @@ CertApp.displayStatusLabel = function (status) {
   return CertApp.STATUS_DISPLAY_LABEL[status] || status;
 };
 
-// The imported history uses a few shorthand payment codes for methods that already have a
-// canonical label — show those under the canonical name so the ledger reads consistently.
-// DISPLAY ONLY: the stored paymentType is never rewritten, so the original source value stays
-// intact for audit. Keyed by the uppercased/trimmed stored value.
-CertApp.PAYMENT_DISPLAY_ALIAS = { CA: 'Cash' };
+// The imported history writes the same few payment methods a dozen different ways (CA/CASH,
+// BT/BK/BANK/Bank Transfer, CC&Cash/CC & Cash/Cash+CC ...) — show them all under one canonical
+// label so the ledger reads consistently. DISPLAY ONLY: the stored paymentType is never
+// rewritten, so the original source value stays intact for audit (and unlocked rows still edit
+// the raw value). Values that aren't notation variants — one-off PM posting numbers such as
+// "PM9239" or "PM9184(Bank)" — deliberately fall through unchanged.
+// Keys are the uppercased stored value; lookup also retries with all whitespace removed, so
+// "CC & Cash" and "CC&Cash" both resolve from the single 'CC&CASH' entry.
+CertApp.PAYMENT_DISPLAY_ALIAS = {
+  CA: 'Cash', CASH: 'Cash',
+  BT: 'Bank transfer', BK: 'Bank transfer', BANK: 'Bank transfer', BANKTRANSFER: 'Bank transfer',
+  'CC&CASH': 'CC & Cash', 'CASH+CC': 'CC & Cash',
+  'CC&BT': 'CC & Bank transfer'
+};
 CertApp.displayPaymentType = function (v) {
   if (v === null || v === undefined || v === '') return v;
-  return CertApp.PAYMENT_DISPLAY_ALIAS[String(v).trim().toUpperCase()] || v;
+  var raw = String(v).trim();
+  var key = raw.toUpperCase();
+  return CertApp.PAYMENT_DISPLAY_ALIAS[key] || CertApp.PAYMENT_DISPLAY_ALIAS[key.replace(/\s+/g, '')] || raw;
 };
 
 function addYearsIso(isoDate, years) {

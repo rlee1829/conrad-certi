@@ -1305,6 +1305,14 @@ CertApp.viewCertificateList = (function () {
       Object.assign({ key: 'outletPostingAmountB', width: 104, align: 'right', format: function (v, r) { return editableNumber(r, 'outletPostingAmountB'); } }, sortableHeader(t('cl.col.outletB'), 'outletPostingAmountB')),
       { key: 'miscRevPostingDate', label: t('cl.col.miscRevDate'), width: 118, format: function (v, r) { return editableDate(r, 'miscRevPostingDate'); } },
       Object.assign({ key: 'arPostingAmountC', width: 96, align: 'right', format: function (v, r) { return editableNumber(r, 'arPostingAmountC'); } }, sortableHeader(t('cl.col.arC'), 'arPostingAmountC')),
+      // Sits between 잡이익(C) and 차액 so the row reads as the arithmetic it is: A − B − C − 환불액 = 차액.
+      Object.assign({ key: 'refundAmount', width: 96, align: 'right', format: function (v, r) {
+        // Only a handful of records are ever refunded — show a dash rather than "0원" on the
+        // rest, so the column reads as "no refund" instead of "refunded nothing".
+        var cur = cellValue(r, 'refundAmount');
+        if (!unlockedIds[r.id] && (cur === null || cur === undefined || cur === '')) return '–';
+        return editableNumber(r, 'refundAmount');
+      } }, sortableHeader(t('cd.field.refundAmount'), 'refundAmount')),
       { key: 'variance', label: t('cl.col.variance'), width: 96, align: 'right', format: function (v, r) {
         // Mirrors accounting.varianceABC, but off the pending-edit values so an unlocked row
         // recomputes live as you type. Refunded cash is an accounted bucket, not a discrepancy.

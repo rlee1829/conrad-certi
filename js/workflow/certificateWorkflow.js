@@ -307,10 +307,34 @@ CertApp.certificateWorkflow = (function () {
     var reason = input.reason === CertApp.VOID_REASON.REFUND ? CertApp.VOID_REASON.REFUND : CertApp.VOID_REASON.MISPRINT;
     rec.status = CertApp.STATUS.VOID;
     rec.voidReason = reason;
+    var miscOps = [];
     if (reason === CertApp.VOID_REASON.REFUND) {
       rec.refundDate = input.refundDate || todayIso();
+      // Refund with a retained penalty: book the penalty to AR Posting(C) as misc income and
+      // leave amountA at face value — the cash paid back is the derived remainder (see
+      // accounting.computeRefundSplit / refundAmount). Recorded in the Misc Revenue ledger too,
+      // same as a write-off, so the misc income balance shows where it actually came from.
+      if (input.applyPenalty) {
+        var split = CertApp.accounting.computeRefundSplit(rec.amountA);
+        rec.outletPostingAmountB = split.outletPostingAmountB;
+        rec.arPostingAmountC = split.arPostingAmountC;
+        if (split.arPostingAmountC > 0) {
+          var penaltyEntry = {
+            id: CertApp.uuid(), certificateId: rec.id, certificateNo: rec.certificateNo, category: rec.category,
+            entryDate: rec.refundDate, type: 'REFUND_PENALTY', amount: split.arPostingAmountC,
+            note: CertApp.i18n.t('mr.refundPenaltyNote', {
+              pct: Math.round(CertApp.accounting.REFUND_PENALTY_RATE * 100),
+              refund: (split.refundAmount || 0).toLocaleString('ko-KR')
+            })
+          };
+          CertApp.cache.miscRevenue.push(penaltyEntry);
+          miscOps.push(CertApp.db.put('miscRevenueEntries', penaltyEntry));
+        }
+      }
     }
     return persist(rec).then(function () {
+      return Promise.all(miscOps);
+    }).then(function () {
       return logAudit(CertApp.AUDIT_ACTION.VOID, before, clone(rec));
     }).then(function () { return rec; });
   }
@@ -707,17 +731,21 @@ CertApp.certificateWorkflow = (function () {
     return withBatch(function () {
       var snaps = snapshotCertsByIds(ids);
       var succeededIds = [];
+      var createdMiscIds = [];   // refund-penalty bookings, so undo removes them too
       var errors = [];
       var chain = Promise.resolve();
       ids.forEach(function (id) {
         chain = chain.then(function () {
-          return safeCall(function () { return voidCertificate(id, input); }).then(function () { succeededIds.push(id); })
-            .catch(function (err) { errors.push(err.message); });
+          var beforeLen = CertApp.cache.miscRevenue.length;
+          return safeCall(function () { return voidCertificate(id, input); }).then(function () {
+            succeededIds.push(id);
+            CertApp.cache.miscRevenue.slice(beforeLen).forEach(function (e) { createdMiscIds.push(e.id); });
+          }).catch(function (err) { errors.push(err.message); });
         });
       });
       return chain.then(function () {
         var succeededSnaps = snaps.filter(function (s) { return succeededIds.indexOf(s.id) !== -1; });
-        if (succeededIds.length) setLastAction(CertApp.i18n.t('cl.toast.bulkDone', { n: succeededIds.length, verb: CertApp.i18n.t('cl.verb.void') }), succeededSnaps);
+        if (succeededIds.length) setLastAction(CertApp.i18n.t('cl.toast.bulkDone', { n: succeededIds.length, verb: CertApp.i18n.t('cl.verb.void') }), succeededSnaps, [], createdMiscIds);
         return { count: succeededIds.length, errors: errors };
       });
     });

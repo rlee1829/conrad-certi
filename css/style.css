@@ -261,6 +261,11 @@ input.date-text { width: 108px; }
 /* New-issue form alignment: 증서번호/발행일/만료일 centered, 금액 right-aligned with commas. */
 input.cert-no-input, input.date-text { text-align: center; }
 input.amount-input { text-align: right; }
+/* 일괄 Void/환불 모달의 위약금 옵션 — 환불이 선택되지 않으면 흐리게 처리. */
+.void-penalty-row { display: block; margin-top: 10px; }
+.void-penalty-row.is-disabled { opacity: .45; }
+.void-preview { margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--accent-dark); min-height: 16px; }
+
 /* 금액 셀: 오른쪽 정렬 입력 + 뒤따르는 "원" 단위. */
 .amount-cell { display: inline-flex; align-items: center; gap: 3px; }
 .amount-cell .amount-input { width: 84px; }

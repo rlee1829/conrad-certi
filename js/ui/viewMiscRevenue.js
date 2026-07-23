@@ -16,7 +16,8 @@ CertApp.viewMiscRevenue = (function () {
   var MISC_REV_TYPE_LABEL = {
     WRITE_OFF: 'cl.miscRev.type.writeOff',
     GRACE_USE_PAYOUT: 'cl.miscRev.type.gracePayout',
-    GRACE_USE_REVERSAL: 'cl.miscRev.type.graceReversal'
+    GRACE_USE_REVERSAL: 'cl.miscRev.type.graceReversal',
+    REFUND_PENALTY: 'cl.miscRev.type.refundPenalty'
   };
 
   // A WRITE_OFF booking can still be clawed back via Grace Use while its certificate is within
@@ -25,6 +26,11 @@ CertApp.viewMiscRevenue = (function () {
   function miscRevStatusCell(entry) {
     if (entry.type === 'GRACE_USE_PAYOUT' || entry.type === 'GRACE_USE_REVERSAL') {
       return ui.el('span', { class: 'status-badge badge-grace', text: t('cl.miscRev.status.done') });
+    }
+    // A refund penalty is permanent: the certificate is VOID, so there is no Grace Use path
+    // that could ever claw it back into real revenue.
+    if (entry.type === 'REFUND_PENALTY') {
+      return ui.el('span', { class: 'status-badge badge-void badge-final', text: t('cl.miscRev.status.final') });
     }
     var rec = CertApp.cache.certificates.find(function (r) { return r.id === entry.certificateId; });
     var pastWindow = rec && CertApp.isPastGraceWindow(rec);

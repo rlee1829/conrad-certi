@@ -42,8 +42,29 @@ CertApp.accounting = (function () {
     return { outletPostingAmountB: outletPostingAmountB, arPostingAmountC: arPostingAmountC };
   }
 
+  // Pre-expiry refund with a retained penalty (e.g. a Pulse 8 10-pack where the guest used some
+  // passes and asks for the rest back before expiry). Mirror image of computeLateUseSplit: no
+  // service was delivered against these, so nothing goes to real outlet revenue — only the
+  // penalty is booked to AR Posting(C) as misc income, and the remainder leaves the ledger as
+  // refunded cash. amountA is deliberately NOT zeroed (the old Excel hack): the face value stays
+  // so the ledger still shows what was sold, and the cash paid back is the derived remainder
+  // (refundAmount below). Remainder method keeps penalty + refund === amountA exactly.
+  var REFUND_PENALTY_RATE = 0.1;
+  function computeRefundSplit(amountA) {
+    var a = amountA || 0;
+    var penalty = Math.round(a * REFUND_PENALTY_RATE);
+    return { outletPostingAmountB: 0, arPostingAmountC: penalty, refundAmount: a - penalty };
+  }
+
   function varianceABC(record) {
     return (record.amountA || 0) - (record.outletPostingAmountB || 0) - (record.arPostingAmountC || 0);
+  }
+
+  // Cash actually paid back on a refund-void — derived, never stored (same rule as varianceABC /
+  // usedAmountBC). It IS the record's 차이(A-B-C): the part of the face value that left as cash
+  // rather than being recognized as revenue (B) or misc income (C).
+  function refundAmount(record) {
+    return varianceABC(record);
   }
 
   // Total value actually consumed when a certificate is used: real revenue (B) + misc income
@@ -57,6 +78,9 @@ CertApp.accounting = (function () {
     isGiftCertificate: isGiftCertificate,
     computeWriteOffSplit: computeWriteOffSplit,
     computeLateUseSplit: computeLateUseSplit,
+    REFUND_PENALTY_RATE: REFUND_PENALTY_RATE,
+    computeRefundSplit: computeRefundSplit,
+    refundAmount: refundAmount,
     varianceABC: varianceABC,
     usedAmountBC: usedAmountBC
   };

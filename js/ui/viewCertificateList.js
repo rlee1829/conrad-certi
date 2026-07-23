@@ -1056,19 +1056,52 @@ CertApp.viewCertificateList = (function () {
     var today = CertApp.today();
     var reasonName = 'bulk-void-reason';
     var refundDateInput = ui.el('input', { type: 'date', value: today });
+    var misprintRadio = ui.el('input', { type: 'radio', name: reasonName, value: 'MISPRINT', checked: 'checked' });
+    var refundRadio = ui.el('input', { type: 'radio', name: reasonName, value: 'REFUND' });
+
+    // 환불 위약금: keep a % of the face value as misc income and pay back the rest. Only
+    // meaningful for 환불 (a misprint never involved money changing hands), so the option is
+    // disabled unless 환불 is selected.
+    var pct = Math.round(acc.REFUND_PENALTY_RATE * 100);
+    var penaltyCb = ui.el('input', { type: 'checkbox' });
+    var penaltyRow = ui.el('label', { class: 'void-penalty-row' }, [penaltyCb, ' ' + t('cl.bulkVoid.applyPenalty', { pct: pct })]);
+    var previewEl = ui.el('div', { class: 'void-preview' });
+
+    function updatePreview() {
+      var isRefund = refundRadio.checked;
+      penaltyCb.disabled = !isRefund;
+      penaltyRow.classList.toggle('is-disabled', !isRefund);
+      if (!isRefund) { previewEl.textContent = ''; return; }
+      // Penalty is rounded per certificate — same as what actually gets written — so the
+      // preview always reconciles exactly against the resulting rows.
+      var face = 0, penalty = 0;
+      recs.forEach(function (r) {
+        face += (r.amountA || 0);
+        penalty += acc.computeRefundSplit(r.amountA).arPostingAmountC;
+      });
+      previewEl.textContent = penaltyCb.checked
+        ? t('cl.bulkVoid.previewPenalty', { n: recs.length, face: ui.formatCurrency(face), penalty: ui.formatCurrency(penalty), refund: ui.formatCurrency(face - penalty) })
+        : t('cl.bulkVoid.previewPlain', { n: recs.length, face: ui.formatCurrency(face) });
+    }
+    [misprintRadio, refundRadio, penaltyCb].forEach(function (el) { el.addEventListener('change', updatePreview); });
+    updatePreview();
 
     ui.openModal(t('cl.bulkVoid.title', { n: recs.length }), [
       ui.el('div', { class: 'muted' }, [recs.map(function (r) { return r.certificateNo; }).join(', ')]),
       ui.el('div', { style: 'margin:10px 0' }, [
-        ui.el('label', { style: 'margin-right:16px' }, [ui.el('input', { type: 'radio', name: reasonName, value: 'MISPRINT', checked: 'checked' }), t('cl.bulkVoid.misprint')]),
-        ui.el('label', {}, [ui.el('input', { type: 'radio', name: reasonName, value: 'REFUND' }), t('cl.bulkVoid.refund')])
+        ui.el('label', { style: 'margin-right:16px' }, [misprintRadio, t('cl.bulkVoid.misprint')]),
+        ui.el('label', {}, [refundRadio, t('cl.bulkVoid.refund')])
       ]),
-      fieldRow(t('cl.bulkVoid.refundDate'), refundDateInput)
+      fieldRow(t('cl.bulkVoid.refundDate'), refundDateInput),
+      penaltyRow,
+      previewEl
     ], function () {
-      var reasonInput = document.querySelector('input[name="' + reasonName + '"]:checked');
-      var reason = reasonInput ? reasonInput.value : 'MISPRINT';
+      var reason = refundRadio.checked ? 'REFUND' : 'MISPRINT';
       var ids = recs.map(function (r) { return r.id; });
-      CertApp.certificateWorkflow.bulkVoidCertificates(ids, { reason: reason, refundDate: refundDateInput.value }).then(function (result) {
+      CertApp.certificateWorkflow.bulkVoidCertificates(ids, {
+        reason: reason, refundDate: refundDateInput.value,
+        applyPenalty: reason === 'REFUND' && penaltyCb.checked
+      }).then(function (result) {
         reportBulkResult(result.count, result.errors, t('cl.verb.void'));
         selectedIds = {};
         refresh();

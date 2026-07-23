@@ -59,12 +59,14 @@ CertApp.viewOverview = (function () {
     var cats = Object.keys(CertApp.CATEGORY);
     var totals = { openingQty: 0, openingAmt: 0, issuedQty: 0, issuedAmt: 0, usedQty: 0, usedAmt: 0, expiredRevQty: 0, expiredRevAmt: 0, voidQty: 0, voidAmt: 0, endingQty: 0, endingAmt: 0 };
 
+    // categoryKey drives the drill-through to the Certificate List; '' on the 합계 row means
+    // "no category filter" (the whole ledger).
     var rows = cats.map(function (cat) {
       var b = summary[cat];
       Object.keys(totals).forEach(function (k) { totals[k] += b[k]; });
-      return Object.assign({ category: CertApp.CATEGORY_LABEL[cat], isTotal: false }, b);
+      return Object.assign({ category: CertApp.CATEGORY_LABEL[cat], categoryKey: cat, isTotal: false }, b);
     });
-    rows.push(Object.assign({ category: t('ov.total'), isTotal: true }, totals));
+    rows.push(Object.assign({ category: t('ov.total'), categoryKey: '', isTotal: true }, totals));
 
     renderGroupedTable(document.getElementById('ov-table-wrap'), rows);
 
@@ -110,7 +112,19 @@ CertApp.viewOverview = (function () {
 
     var tbody = ui.el('tbody');
     rows.forEach(function (r) {
-      var cells = [ui.el('td', { class: 'col-align-left' + (r.isTotal ? ' ov-total-cell' : ''), text: r.category })];
+      // 종류 name drills through to the Certificate List filtered to that category (full history,
+      // no period). Only the NAME is a link — the measure cells below are point-in-time figures
+      // (effectiveStatusAsOf) that the list's stored-status filter can't reproduce, so linking
+      // them would show counts that don't match the number clicked.
+      var cells = [ui.el('td', { class: 'col-align-left' + (r.isTotal ? ' ov-total-cell' : '') }, [
+        ui.el('button', {
+          class: 'link-btn', text: r.category, title: t('ov.viewInList'),
+          onclick: function () {
+            CertApp.viewCertificateList.showFiltered({ category: r.categoryKey });
+            CertApp.router.go('certlist');
+          }
+        })
+      ])];
       GROUPS.forEach(function (g) {
         cells.push(ui.el('td', { class: 'col-align-right' + (r.isTotal ? ' ov-total-cell' : ''), text: ui.formatCurrency(r[g.amtKey]) }));
         cells.push(ui.el('td', { class: 'col-align-right' + (r.isTotal ? ' ov-total-cell' : ''), text: ui.formatNumber(r[g.qtyKey]) + t('common.cases') }));

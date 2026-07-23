@@ -44,6 +44,7 @@ CertApp.i18n = (function () {
       'ov.colIssuedAmt': 'Issued 금액', 'ov.colIssuedQty': 'Issued 건수', 'ov.colUsedAmt': 'Used 금액', 'ov.colUsedQty': 'Used 건수',
       'ov.colExpAmt': 'Expired→Rev 금액', 'ov.colExpQty': 'Expired→Rev 건수', 'ov.colVoidAmt': 'Void/Refund 금액', 'ov.colVoidQty': 'Void/Refund 건수',
       'ov.colEndingAmt': 'Ending 금액', 'ov.colEndingQty': 'Ending 건수', 'ov.total': '합계 (Total)',
+      'ov.viewInList': '증서목록에서 이 종류 전체 보기',
       'ov.grpOpening': 'Opening', 'ov.grpIssued': 'Issued', 'ov.grpUsed': 'Used', 'ov.grpExpired': 'Expired→Rev',
       'ov.grpVoid': 'Void/Refund', 'ov.grpEnding': 'Ending', 'ov.subAmt': '금액', 'ov.subQty': '건수',
 
@@ -195,6 +196,7 @@ CertApp.i18n = (function () {
       'ov.colIssuedAmt': 'Issued Amt', 'ov.colIssuedQty': 'Issued Qty', 'ov.colUsedAmt': 'Used Amt', 'ov.colUsedQty': 'Used Qty',
       'ov.colExpAmt': 'Expired→Rev Amt', 'ov.colExpQty': 'Expired→Rev Qty', 'ov.colVoidAmt': 'Void/Refund Amt', 'ov.colVoidQty': 'Void/Refund Qty',
       'ov.colEndingAmt': 'Ending Amt', 'ov.colEndingQty': 'Ending Qty', 'ov.total': 'Total',
+      'ov.viewInList': 'View all of this category in the certificate list',
       'ov.grpOpening': 'Opening', 'ov.grpIssued': 'Issued', 'ov.grpUsed': 'Used', 'ov.grpExpired': 'Expired→Rev',
       'ov.grpVoid': 'Void/Refund', 'ov.grpEnding': 'Ending', 'ov.subAmt': 'Amt', 'ov.subQty': 'Qty',
 

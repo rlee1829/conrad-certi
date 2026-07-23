@@ -214,6 +214,18 @@ CertApp.viewCertificateList = (function () {
     state.page = 1;
   }
 
+  // Jump target for other views (Overview's 종류 cell): clear every filter, then apply just the
+  // requested one, so the list shows exactly what the caller asked for and nothing else. The
+  // period is deliberately blanked — matches() skips date filtering when start/end are empty —
+  // so clicking a category shows its FULL history, not just the Overview's current month.
+  // Call this, then CertApp.router.go('certlist').
+  function showFiltered(filter) {
+    resetFiltersToDefault();
+    state.periodStart = ''; state.periodEnd = '';
+    Object.assign(state, filter || {});
+    state.page = 1;
+  }
+
   // ---------- top-level render ----------
 
   function render(container) {
@@ -1182,5 +1194,5 @@ CertApp.viewCertificateList = (function () {
     pager.appendChild(ui.el('button', { class: 'btn', disabled: atLast ? 'disabled' : null, onclick: function () { goToPage(state.page + 1); } }, [t('common.next')]));
   }
 
-  return { render: render };
+  return { render: render, showFiltered: showFiltered };
 })();

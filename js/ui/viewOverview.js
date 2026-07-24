@@ -17,11 +17,16 @@ CertApp.viewOverview = (function () {
   var state = currentMonthPeriod();
 
   // Measure groups: each renders as one top-level header cell spanning its amount+qty columns.
+  // These are the mutually exclusive movements that tie out as
+  //   Opening + Issued − Used − Void/Refund = Ending.
+  // The old 만료→잡이익 column is deliberately NOT here: it was a breakdown OF Used, so showing it
+  // alongside these invited subtracting it a second time. computeSummary still returns
+  // expiredRev*, and the expiry write-off is reported properly (by period, as misc income) in
+  // 마감 요약 — see viewPosting.js.
   var GROUPS = [
     { label: 'ov.grpOpening', amtKey: 'openingAmt', qtyKey: 'openingQty' },
     { label: 'ov.grpIssued', amtKey: 'issuedAmt', qtyKey: 'issuedQty' },
     { label: 'ov.grpUsed', amtKey: 'usedAmt', qtyKey: 'usedQty' },
-    { label: 'ov.grpExpired', amtKey: 'expiredRevAmt', qtyKey: 'expiredRevQty' },
     { label: 'ov.grpVoid', amtKey: 'voidAmt', qtyKey: 'voidQty' },
     { label: 'ov.grpEnding', amtKey: 'endingAmt', qtyKey: 'endingQty' }
   ];
@@ -49,9 +54,9 @@ CertApp.viewOverview = (function () {
 
     var tableWrap = ui.el('div', { class: 'panel table-scroll', id: 'ov-table-wrap' });
     wrap.appendChild(tableWrap);
-    // 만료→잡이익 is a breakdown OF Used (see computeSummary), not a separate movement — say so,
-    // or a reader subtracts it a second time and the balance no longer ties out.
-    wrap.appendChild(ui.el('div', { class: 'muted', style: 'font-size:11.5px;margin:-6px 2px 12px;line-height:1.6', text: t('ov.expiredNote') }));
+    // State the identity the columns tie out to, and point at 마감 요약 for the expiry write-off
+    // (which lives inside Used here and is reported as misc income there).
+    wrap.appendChild(ui.el('div', { class: 'muted', style: 'font-size:11.5px;margin:-6px 2px 12px;line-height:1.6', text: t('ov.balanceNote') }));
 
     container.appendChild(wrap);
     renderTable();

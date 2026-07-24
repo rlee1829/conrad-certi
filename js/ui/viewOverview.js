@@ -49,6 +49,9 @@ CertApp.viewOverview = (function () {
 
     var tableWrap = ui.el('div', { class: 'panel table-scroll', id: 'ov-table-wrap' });
     wrap.appendChild(tableWrap);
+    // 만료→잡이익 is a breakdown OF Used (see computeSummary), not a separate movement — say so,
+    // or a reader subtracts it a second time and the balance no longer ties out.
+    wrap.appendChild(ui.el('div', { class: 'muted', style: 'font-size:11.5px;margin:-6px 2px 12px;line-height:1.6', text: t('ov.expiredNote') }));
 
     container.appendChild(wrap);
     renderTable();

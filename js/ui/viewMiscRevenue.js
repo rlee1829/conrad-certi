@@ -11,7 +11,12 @@ CertApp.viewMiscRevenue = (function () {
   var ui = CertApp.ui;
   var t = CertApp.i18n.t;
 
-  var state = { category: '', type: '' };
+  // Period defaults to this month (1st → today), matching the Overview/마감 요약 convention.
+  function currentMonthPeriod() {
+    var now = new Date();
+    return { start: CertApp.formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1)), end: CertApp.today() };
+  }
+  var state = { category: '', type: '', periodStart: '', periodEnd: '' };
 
   var MISC_REV_TYPE_LABEL = {
     WRITE_OFF: 'cl.miscRev.type.writeOff',
@@ -43,6 +48,9 @@ CertApp.viewMiscRevenue = (function () {
   function matches(e) {
     if (state.category && e.category !== state.category) return false;
     if (state.type && e.type !== state.type) return false;
+    // Period is on entryDate — the date the misc income was actually booked.
+    if (state.periodStart && (!e.entryDate || e.entryDate < state.periodStart)) return false;
+    if (state.periodEnd && (!e.entryDate || e.entryDate > state.periodEnd)) return false;
     return true;
   }
 
@@ -65,7 +73,8 @@ CertApp.viewMiscRevenue = (function () {
   }
 
   function render(container) {
-    state = { category: '', type: '' };
+    var period = currentMonthPeriod();
+    state = { category: '', type: '', periodStart: period.start, periodEnd: period.end };
     var wrap = ui.el('div', { class: 'view-misc-revenue' });
 
     wrap.appendChild(ui.el('div', { class: 'panel muted' }, [t('cl.miscRev.desc')]));
@@ -80,6 +89,10 @@ CertApp.viewMiscRevenue = (function () {
     var controls = ui.el('div', { class: 'panel controls-row controls-row-tight' }, [
       ui.el('select', { onchange: function (e) { state.category = e.target.value; renderTable(); } }, catOptions),
       ui.el('select', { onchange: function (e) { state.type = e.target.value; renderTable(); } }, typeOptions),
+      ui.el('span', { text: t('mr.period') }),
+      ui.el('input', { type: 'date', value: state.periodStart, onchange: function (e) { state.periodStart = e.target.value; renderTable(); } }),
+      ui.el('span', { text: '~' }),
+      ui.el('input', { type: 'date', value: state.periodEnd, onchange: function (e) { state.periodEnd = e.target.value; renderTable(); } }),
       ui.refreshButton(),
       ui.el('button', { class: 'btn btn-primary', text: t('mr.sync.button'), onclick: onSyncLedger })
     ]);

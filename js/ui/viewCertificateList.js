@@ -836,10 +836,39 @@ CertApp.viewCertificateList = (function () {
     return input;
   }
 
+  // Normalizes the common ways a date gets typed into the canonical YYYY-MM-DD the ledger stores
+  // and compares on: 20260724 / 2026.7.4 / 2026/07/24 all become 2026-07-24. Anything it can't
+  // read is returned unchanged so the user sees (and can fix) exactly what they typed.
+  function normalizeDateInput(v) {
+    var s = (v || '').trim();
+    if (!s) return '';
+    var digits = s.replace(/[^\d]/g, '');
+    if (digits.length === 8) return digits.slice(0, 4) + '-' + digits.slice(4, 6) + '-' + digits.slice(6, 8);
+    var m = s.match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})$/);
+    if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+    return s;
+  }
+
+  // Inline date editing uses a plain text field in YYYY-MM-DD rather than <input type=date>, whose
+  // rendering follows the browser locale (mm/dd/yyyy here) and doesn't match the ledger's format.
   function editableDate(rec, field) {
     if (!unlockedIds[rec.id]) return cellValue(rec, field);
-    var input = ui.el('input', { type: 'date', value: cellValue(rec, field) || '' });
+    var input = ui.el('input', {
+      type: 'text', class: 'date-text', maxlength: '10', placeholder: 'YYYY-MM-DD',
+      value: cellValue(rec, field) || ''
+    });
     wireEdit(rec, field, input, false);
+    // Normalize on blur/commit so the stored value is always canonical, and keep the pending edit
+    // in sync with what normalization produced.
+    input.addEventListener('change', function () {
+      var norm = normalizeDateInput(input.value);
+      if (norm !== input.value) {
+        input.value = norm;
+        pendingRowEdits[rec.id] = pendingRowEdits[rec.id] || {};
+        pendingRowEdits[rec.id][field] = norm;
+        renderBulkToolbar();
+      }
+    });
     return input;
   }
 
@@ -1349,14 +1378,19 @@ CertApp.viewCertificateList = (function () {
 
     var today = CertApp.today();
     var graceDateInput = ui.el('input', { type: 'date', value: today });
+    // 비고: goes onto the 잡이익 원장 entries this creates (payout + reversal), so the ledger says
+    // WHY the misc income was released instead of only the default note.
+    var noteInput = ui.el('input', { type: 'text', placeholder: t('cl.bulkGrace.notePlaceholder') });
 
     ui.openModal(t('cl.bulkGrace.title', { n: recs.length }), [
       ui.el('div', { class: 'muted' }, [recs.map(function (r) { return r.certificateNo; }).join(', ')]),
       ui.el('div', {}, [t('cl.bulkGrace.desc')]),
-      fieldRow(t('cl.bulkGrace.date'), graceDateInput)
+      fieldRow(t('cl.bulkGrace.date'), graceDateInput),
+      fieldRow(t('cl.miscRev.col.note'), noteInput)
     ], function () {
       var ids = recs.map(function (r) { return r.id; });
-      CertApp.certificateWorkflow.bulkGraceUseExpired(ids, { graceUseDate: graceDateInput.value }).then(function (result) {
+      var note = noteInput.value.trim() || null;
+      CertApp.certificateWorkflow.bulkGraceUseExpired(ids, { graceUseDate: graceDateInput.value, note: note }).then(function (result) {
         reportBulkResult(result.results.length, result.errors, t('cl.verb.grace'));
         selectedIds = {};
         refresh();

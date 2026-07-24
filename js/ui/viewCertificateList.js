@@ -1017,11 +1017,11 @@ CertApp.viewCertificateList = (function () {
       CertApp.certificateWorkflow.bulkCorrectRecords(pendingRowEdits, reason).then(function (result) {
         reportBulkResult(result.count, result.errors, t('cl.verb.save'));
         pendingRowEdits = {}; unlockedIds = {}; rowInputs = {}; selectedIds = {};
-        // A review session (e.g. clearing every "needs review" row) ends with those rows no
-        // longer matching whatever filter found them — reset to the full unfiltered list
-        // instead of leaving the table looking empty after a successful save.
-        resetFiltersToDefault();
-        CertApp.router.refresh();
+        // Stay exactly where the user was — keep the current filters, search, sort, and page.
+        // Just re-render the table in place (now showing the saved values with rows re-locked);
+        // a local refresh() rather than resetFiltersToDefault()/router.refresh(), which would
+        // wipe the filters and jump back to the full list.
+        refresh();
       }).catch(function (err) { ui.toast(err.message, 'error'); });
     }, t('common.save'));
   }

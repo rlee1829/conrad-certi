@@ -346,14 +346,14 @@ CertApp.viewCertificateList = (function () {
     var today = CertApp.today();
     var category = sellableCategoryKeys()[0];
     return { category: category, certificateNo: '', issuedDate: today, expiryDate: defaultExpiryFor(category, today),
-      amountA: defaultAmountFor(category), paymentType: '', certificateDetail: '', discountReceiptNote: '' };
+      amountA: defaultAmountFor(category), paymentType: '', certificateDetail: '', billNo: defaultIssueNote(), discountReceiptNote: '' };
   }
 
   function newQuickFill() {
     var today = CertApp.today();
     var category = sellableCategoryKeys()[0];
     return { category: category, startNo: '', qty: 10, amountA: defaultAmountFor(category),
-      issuedDate: today, paymentType: '', certificateDetail: '', discountReceiptNote: '' };
+      issuedDate: today, paymentType: '', certificateDetail: '', billNo: defaultIssueNote(), discountReceiptNote: '' };
   }
 
   function toggleBulkIssuePanel() {
@@ -525,7 +525,7 @@ CertApp.viewCertificateList = (function () {
         category: q.category, certificateNo: incrementCertNo(startNo, i),
         issuedDate: q.issuedDate, expiryDate: defaultExpiryFor(q.category, q.issuedDate),
         amountA: q.amountA, paymentType: q.paymentType,
-        certificateDetail: q.certificateDetail || '', _detailGroup: q._detailGroup,
+        certificateDetail: q.certificateDetail || '', _detailGroup: q._detailGroup, billNo: q.billNo || '',
         discountReceiptNote: q.discountReceiptNote || ''
       });
     }
@@ -620,6 +620,7 @@ CertApp.viewCertificateList = (function () {
     var detailField = catalogDetailSelect(q.category, q.certificateDetail,
       function (prod) { q.category = prod.category; q.amountA = prod.amount; q.certificateDetail = prod.detail; q._detailGroup = null; renderBulkIssuePanel(); },
       function (v) { q.certificateDetail = v; });
+    var qfBillNoInput = ui.el('input', { type: 'text', value: q.billNo, style: 'width:150px', oninput: function (e) { q.billNo = e.target.value; } });
     var discountInput = ui.el('input', { type: 'text', value: q.discountReceiptNote, style: 'width:120px', oninput: function (e) { q.discountReceiptNote = e.target.value; } });
 
     function labeled(labelKey, el) { return ui.el('label', { class: 'quickfill-field' }, [ui.el('span', { text: t(labelKey) }), el]); }
@@ -639,10 +640,18 @@ CertApp.viewCertificateList = (function () {
         labeled('cl.bulkIssue.col.amount', amountField),
         labeled('cl.bulkIssue.col.issuedDate', issuedInput),
         labeled('cl.bulkIssue.col.paymentType', paymentField),
+        labeled('cl.col.billNo', qfBillNoInput),
         labeled('cl.col.discountReceipt', discountInput),
         ui.el('button', { class: 'btn btn-primary', text: t('cl.quickFill.generate'), onclick: onQuickGenerate })
       ])
     ]);
+  }
+
+  // Default 비고 for a new issue row: "발행: {담당자}". Pre-filled (not just a placeholder) so it
+  // is actually saved, while staying editable if the cashier wants a different note.
+  function defaultIssueNote() {
+    var who = CertApp.operator.get();
+    return who ? t('cl.bulkIssue.issuedBy', { name: who }) : '';
   }
 
   function renderIssueRow(row, idx) {
@@ -671,9 +680,10 @@ CertApp.viewCertificateList = (function () {
     var expiryInput = dateTextInput(row.expiryDate, function (v) { row.expiryDate = v; });
     var amountField = amountFieldFor(row.category, row.amountA, function (v) { row.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
     var paymentField = selectWithOther(PAYMENT_OPTIONS, row.paymentType, function (v) { row.paymentType = v; });
+    var billNoInput = ui.el('input', { type: 'text', value: row.billNo, oninput: function (e) { row.billNo = e.target.value; } });
     var discountInput = ui.el('input', { type: 'text', value: row.discountReceiptNote, oninput: function (e) { row.discountReceiptNote = e.target.value; } });
     var removeBtn = ui.el('button', { class: 'btn', text: '✕', onclick: function () { bulkIssueRows.splice(idx, 1); renderBulkIssuePanel(); } });
-    return ui.el('tr', {}, [catSelect, detailField, certNoInput, amountField, issuedInput, expiryInput, paymentField, discountInput, removeBtn]
+    return ui.el('tr', {}, [catSelect, detailField, certNoInput, amountField, issuedInput, expiryInput, paymentField, billNoInput, discountInput, removeBtn]
       .map(function (el) { return ui.el('td', {}, [el]); }));
   }
 
@@ -699,7 +709,7 @@ CertApp.viewCertificateList = (function () {
 
     var headerLabels = [
       t('cl.bulkIssue.col.category'), t('cl.bulkIssue.col.detail'), t('cl.bulkIssue.col.certNo'), t('cl.bulkIssue.col.amount'), t('cl.bulkIssue.col.issuedDate'),
-      t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.col.discountReceipt'), ''
+      t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.col.billNo'), t('cl.col.discountReceipt'), ''
     ];
     var thead = ui.el('thead', {}, [ui.el('tr', {}, headerLabels.map(function (h) { return ui.el('th', { text: h }); }))]);
     var tbody = ui.el('tbody', {}, bulkIssueRows.map(renderIssueRow));
@@ -735,7 +745,7 @@ CertApp.viewCertificateList = (function () {
       return {
         category: row.category, certificateNo: row.certificateNo, issuedDate: row.issuedDate,
         expiryDate: row.expiryDate, amountA: Number(row.amountA), paymentType: row.paymentType || null,
-        certificateDetail: row.certificateDetail || null,
+        certificateDetail: row.certificateDetail || null, billNo: row.billNo || null,
         discountReceiptNote: row.discountReceiptNote || null
       };
     });
@@ -1375,19 +1385,40 @@ CertApp.viewCertificateList = (function () {
 
     var today = CertApp.today();
     var graceDateInput = ui.el('input', { type: 'date', value: today });
-    // 비고: goes onto the 잡이익 원장 entries this creates (payout + reversal), so the ledger says
-    // WHY the misc income was released instead of only the default note.
-    var noteInput = ui.el('input', { type: 'text', placeholder: t('cl.bulkGrace.notePlaceholder') });
 
-    ui.openModal(t('cl.bulkGrace.title', { n: recs.length }), [
-      ui.el('div', { class: 'muted' }, [recs.map(function (r) { return r.certificateNo; }).join(', ')]),
+    // Per-certificate 비고/특이사항, pre-filled with what the record already carries (e.g.
+    // "To Revenue on 20221231") so the existing note is visible and can be corrected in the same
+    // step rather than silently kept or wiped.
+    var rowsData = recs.map(function (rec) {
+      return {
+        rec: rec,
+        billNoInput: ui.el('input', { type: 'text', value: rec.billNo || '' }),
+        noteInput: ui.el('input', { type: 'text', value: rec.discountReceiptNote || '' })
+      };
+    });
+
+    var body = [
       ui.el('div', {}, [t('cl.bulkGrace.desc')]),
-      fieldRow(t('cl.bulkGrace.date'), graceDateInput),
-      fieldRow(t('cl.miscRev.col.note'), noteInput)
-    ], function () {
+      fieldRow(t('cl.bulkGrace.date'), graceDateInput)
+    ];
+    rowsData.forEach(function (rd) {
+      body.push(ui.el('div', { style: 'border-top:1px solid var(--border);padding-top:8px;margin-top:8px' }, [
+        ui.el('div', { style: 'font-weight:700' }, [rd.rec.certificateNo + ' · ' + ui.formatCurrency(rd.rec.amountA)]),
+        fieldRow(t('cl.col.billNo'), rd.billNoInput),
+        fieldRow(t('cl.col.discountReceipt'), rd.noteInput)
+      ]));
+    });
+
+    ui.openModal(t('cl.bulkGrace.title', { n: recs.length }), body, function () {
       var ids = recs.map(function (r) { return r.id; });
-      var note = noteInput.value.trim() || null;
-      CertApp.certificateWorkflow.bulkGraceUseExpired(ids, { graceUseDate: graceDateInput.value, note: note }).then(function (result) {
+      var byId = {};
+      rowsData.forEach(function (rd) {
+        byId[rd.rec.id] = {
+          billNo: rd.billNoInput.value.trim() || null,
+          discountReceiptNote: rd.noteInput.value.trim() || null
+        };
+      });
+      CertApp.certificateWorkflow.bulkGraceUseExpired(ids, { graceUseDate: graceDateInput.value, byId: byId }).then(function (result) {
         reportBulkResult(result.results.length, result.errors, t('cl.verb.grace'));
         selectedIds = {};
         refresh();

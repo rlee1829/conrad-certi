@@ -227,9 +227,10 @@ CertApp.certificateWorkflow = (function () {
       outletPostingAmountB: null,
       miscRevPostingDate: null,
       arPostingAmountC: null,
-      // Note column: records who issued it (current operator — see operator.js), so the issuer is
-      // traceable straight from the ledger, not just from the Audit Log.
-      billNo: issuerNote(),
+      // Note column: whatever the issue form supplied — which is pre-filled with "발행: {담당자}"
+      // (see issuerNote) and stays editable, so the issuer is traceable straight from the ledger
+      // while still allowing a hand-written note. Falls back to the issuer line if left blank.
+      billNo: (input.billNo && String(input.billNo).trim()) || issuerNote(),
       sellerOperaId: input.sellerOperaId || null,
       voidReason: null,
       refundDate: null,
@@ -445,6 +446,10 @@ CertApp.certificateWorkflow = (function () {
     rec.arPostingAmountC = split.arPostingAmountC;
     rec.status = CertApp.STATUS.GRACE_USED;
     rec.graceUseDate = graceUseDate;
+    // The dialog shows the record's existing 비고/특이사항 pre-filled and editable, so a grace use
+    // can correct them in the same step; only overwrite what the caller actually passed.
+    if (input && input.billNo !== undefined) rec.billNo = input.billNo;
+    if (input && input.discountReceiptNote !== undefined) rec.discountReceiptNote = input.discountReceiptNote;
 
     CertApp.cache.miscRevenue.push(payoutEntry, reversalEntry);
     return Promise.all([
@@ -842,7 +847,11 @@ CertApp.certificateWorkflow = (function () {
       ids.forEach(function (id) {
         chain = chain.then(function () {
           var beforeLen = CertApp.cache.miscRevenue.length;
-          return safeCall(function () { return graceUseExpired(id, input); }).then(function (rec) {
+          // input.byId carries per-certificate overrides (비고/특이사항 edited in the dialog);
+          // everything else in `input` (e.g. graceUseDate) is shared across the batch.
+          var perId = (input && input.byId && input.byId[id]) || {};
+          var merged = Object.assign({}, input, perId);
+          return safeCall(function () { return graceUseExpired(id, merged); }).then(function (rec) {
             results.push(rec);
             CertApp.cache.miscRevenue.slice(beforeLen).forEach(function (e) { createdMiscIds.push(e.id); });
           }).catch(function (err) { errors.push(err.message); });

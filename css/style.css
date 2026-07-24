@@ -516,3 +516,6 @@ input.amount-input { text-align: right; }
 .ic-sev-error { background: var(--danger-light); color: var(--danger); }
 .ic-sev-warn { background: var(--warn-light); color: var(--warn); }
 .empty-state.ic-clean { color: var(--ok); font-weight: 700; }
+
+/* 마감 요약: 합계/순증감 행 강조 (overview 총계 행과 동일한 처리). */
+.view-posting .data-table tbody tr:last-child td { font-weight: 800; background: var(--accent-light) !important; border-top: 2px solid var(--accent); }

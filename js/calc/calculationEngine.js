@@ -112,10 +112,66 @@ CertApp.calculationEngine = (function () {
       .sort(function (a, b) { return a.record.expiryDate < b.record.expiryDate ? -1 : 1; });
   }
 
+  // computePostingSummary(periodStart, periodEnd) -> GL posting lines for month-end close: the
+  // P&L movements (revenue recognized, misc income by kind, cash refunded) plus issuance, each
+  // placed in the period by its own accounting date. Reads misc income straight from the ledger
+  // (see syncMiscRevenueLedger) so 잡이익 전환/환원/위약금 net out exactly as posted, and adds a
+  // per-category breakdown of the revenue/misc/refund lines for a GL-ready table.
+  function computePostingSummary(periodStart, periodEnd, records, miscRevenue) {
+    records = records || CertApp.cache.certificates;
+    miscRevenue = miscRevenue || CertApp.cache.miscRevenue;
+    function line() { return { qty: 0, amt: 0 }; }
+    var out = {
+      issued: line(), revenue: line(), refundCash: line(),
+      writeOff: line(), refundPenalty: line(), graceReversal: line(), gracePayout: line(),
+      miscIncomeNet: 0,
+      byCategory: {}
+    };
+    Object.keys(CertApp.CATEGORY).forEach(function (c) {
+      out.byCategory[c] = { revenue: 0, miscIncome: 0, refundCash: 0 };
+    });
+
+    records.forEach(function (r) {
+      var cat = out.byCategory[r.category];
+      // 발행: face value entering circulation in the period (misprints never circulated).
+      if (inRange(r.issuedDate, periodStart, periodEnd) && r.voidReason !== CertApp.VOID_REASON.MISPRINT) {
+        out.issued.qty += 1; out.issued.amt += (r.amountA || 0);
+      }
+      // 매출 인식: real revenue posted to Outlet(B) when a cert is used in the period.
+      if (inRange(r.usedDate, periodStart, periodEnd) &&
+        (r.status === CertApp.STATUS.USED || r.status === CertApp.STATUS.GRACE_USED)) {
+        var b = r.outletPostingAmountB || 0;
+        out.revenue.qty += 1; out.revenue.amt += b;
+        if (cat) cat.revenue += b;
+      }
+      // 환불 현금: cash handed back in the period (penalty refund or partly-spent balance refund).
+      if (inRange(r.refundDate, periodStart, periodEnd) && (r.refundAmount || 0) > 0) {
+        out.refundCash.qty += 1; out.refundCash.amt += (r.refundAmount || 0);
+        if (cat) cat.refundCash += (r.refundAmount || 0);
+      }
+    });
+
+    // 잡이익: taken from the ledger by entry date, so each posting (write-off / refund penalty /
+    // grace payout+reversal) lands in the period it was actually booked.
+    var TYPE_LINE = { WRITE_OFF: 'writeOff', REFUND_PENALTY: 'refundPenalty', GRACE_USE_REVERSAL: 'graceReversal', GRACE_USE_PAYOUT: 'gracePayout' };
+    miscRevenue.forEach(function (e) {
+      if (!inRange(e.entryDate, periodStart, periodEnd)) return;
+      var amt = e.amount || 0;
+      out.miscIncomeNet += amt;
+      var key = TYPE_LINE[e.type];
+      if (key) { out[key].qty += 1; out[key].amt += amt; }
+      var cat = out.byCategory[e.category];
+      if (cat) cat.miscIncome += amt;
+    });
+
+    return out;
+  }
+
   return {
     effectiveStatusAsOf: effectiveStatusAsOf,
     computeSummary: computeSummary,
     computeExpiryQueue: computeExpiryQueue,
+    computePostingSummary: computePostingSummary,
     dayBefore: dayBefore
   };
 })();

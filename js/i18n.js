@@ -11,7 +11,14 @@ CertApp.i18n = (function () {
 
   var DICT = {
     ko: {
-      'nav.overview': '개요', 'nav.certlist': '증서 목록', 'nav.expiry': '만료 대기열', 'nav.miscRevenue': '잡이익 원장', 'nav.integrity': '정합성 점검', 'nav.auditLog': '감사 로그', 'nav.importexport': '가져오기/내보내기',
+      'nav.overview': '개요', 'nav.certlist': '증서 목록', 'nav.expiry': '만료 대기열', 'nav.miscRevenue': '잡이익 원장', 'nav.posting': '마감 요약', 'nav.integrity': '정합성 점검',
+      'ps.desc': '선택한 기간의 회계 전기용 요약입니다. 매출 인식(B), 잡이익(전환·위약금·환원), 환불 현금, 발행액을 각각의 회계일 기준으로 집계해 월마감 시 GL 전기에 바로 쓸 수 있습니다. 잡이익은 잡이익 원장 기록을 그대로 반영합니다.',
+      'ps.periodTitle': '{start} ~ {end} 전기 요약', 'ps.byCategory': '종류별 내역',
+      'ps.col.item': '항목', 'ps.col.qty': '건수', 'ps.col.amount': '금액',
+      'ps.line.issued': '발행 (액면)', 'ps.line.revenue': '매출 인식 (B)', 'ps.line.writeOff': '잡이익 전환 (만료)',
+      'ps.line.refundPenalty': '환불 위약금 (잡이익)', 'ps.line.graceReversal': '잡이익 환원 (매출 반제)',
+      'ps.line.refundCash': '환불 현금 (D)', 'ps.line.miscNet': '잡이익 순증감 (합계)',
+      'ps.export': '엑셀 내보내기', 'ps.sheet.summary': '전기요약', 'ps.sheet.category': '종류별', 'ps.fileName': '마감요약_{start}_{end}', 'nav.auditLog': '감사 로그', 'nav.importexport': '가져오기/내보내기',
       'ic.desc': '모든 증서를 회계 규칙에 따라 점검해 이상 건을 찾아냅니다. 차액이 맞지 않거나, 만료 인식인데 매출로 잡혀 있거나, 환불인데 환불일이 없는 등 손으로 찾기 어려운 오분개를 한 번에 확인하고 바로 수정으로 연결됩니다.',
       'ic.allChecks': '전체 점검 항목', 'ic.allSeverity': '전체 심각도', 'ic.sev.error': '오류', 'ic.sev.warn': '경고',
       'ic.card.total': '총 이상', 'ic.card.error': '오류', 'ic.card.warn': '경고',
@@ -205,7 +212,14 @@ CertApp.i18n = (function () {
       'ie.reclassify.done': '{n}건 정리 완료 (USED {used}건 · GRACE_USED {grace}건).', 'ie.reclassify.note': '사용 상태 재분류 (잡이익 있고 만료 후 사용 → GRACE_USED, 그 외 → USED)', 'ie.reclassify.verb': '재분류',
     },
     en: {
-      'nav.overview': 'Overview', 'nav.certlist': 'Certificate List', 'nav.expiry': 'Expiry Queue', 'nav.miscRevenue': 'Misc Income', 'nav.integrity': 'Integrity Check', 'nav.auditLog': 'Audit Log', 'nav.importexport': 'Import / Export',
+      'nav.overview': 'Overview', 'nav.certlist': 'Certificate List', 'nav.expiry': 'Expiry Queue', 'nav.miscRevenue': 'Misc Income', 'nav.posting': 'Close Summary', 'nav.integrity': 'Integrity Check',
+      'ps.desc': 'GL posting summary for the selected period: revenue recognized (B), misc income (write-off / refund penalty / grace reversal), cash refunded, and gross issuance — each placed by its own accounting date. Misc income mirrors the ledger exactly.',
+      'ps.periodTitle': 'Posting summary {start} ~ {end}', 'ps.byCategory': 'By category',
+      'ps.col.item': 'Item', 'ps.col.qty': 'Count', 'ps.col.amount': 'Amount',
+      'ps.line.issued': 'Issued (face)', 'ps.line.revenue': 'Revenue recognized (B)', 'ps.line.writeOff': 'Misc income — write-off',
+      'ps.line.refundPenalty': 'Misc income — refund penalty', 'ps.line.graceReversal': 'Misc income — grace reversal',
+      'ps.line.refundCash': 'Cash refunded (D)', 'ps.line.miscNet': 'Net misc income (total)',
+      'ps.export': 'Export to Excel', 'ps.sheet.summary': 'Posting', 'ps.sheet.category': 'By category', 'ps.fileName': 'CloseSummary_{start}_{end}', 'nav.auditLog': 'Audit Log', 'nav.importexport': 'Import / Export',
       'ic.desc': 'Scans every certificate against the accounting rules and lists anomalies — variance that does not reconcile, a write-off booked as revenue, a refund with no refund date — each linked straight to a fix.',
       'ic.allChecks': 'All checks', 'ic.allSeverity': 'All severities', 'ic.sev.error': 'Error', 'ic.sev.warn': 'Warning',
       'ic.card.total': 'Total issues', 'ic.card.error': 'Errors', 'ic.card.warn': 'Warnings',

@@ -50,7 +50,8 @@ body {
 
 /* Left edge matches .nav-item's own padding (10px 12px) so the logo/subtitle line up with
    the nav icons below rather than sitting centered above them. */
-.sidebar-brand { padding: 10px 12px 26px; display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+.sidebar-brand { padding: 10px 12px 26px; display: flex; flex-direction: column; align-items: flex-start; text-align: left; cursor: pointer; border-radius: var(--radius-sm); transition: opacity .15s; }
+.sidebar-brand:hover { opacity: .7; }
 .brand-logo { display: block; height: 32px; width: auto; margin: 0; }
 .brand-sub {
   font-size: 13px; color: var(--text-2); font-weight: 700; letter-spacing: .3px;

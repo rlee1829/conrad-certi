@@ -19,6 +19,12 @@ CertApp.wireNav = function () {
       CertApp.router.go(item.dataset.view);
     });
   });
+  // Conrad logo acts as a "home" button: jump to 개요 and re-render it fresh. router.go() clears
+  // and rebuilds the view even when it's already the current one, so this doubles as a refresh.
+  var brand = document.querySelector('.sidebar-brand');
+  if (brand) {
+    brand.addEventListener('click', function () { CertApp.router.go('overview'); });
+  }
 };
 
 var REGISTERED_VIEW_NAMES = ['overview', 'certlist', 'expiry', 'miscrevenue', 'auditlog', 'importexport'];

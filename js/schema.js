@@ -45,6 +45,9 @@ CertApp.VIRTUAL_STATUS = {
 CertApp.STATUS_DISPLAY_LABEL = {
   EXPIRED_PENDING: 'EXPIRED',
   EXPIRED_RECOGNIZED: 'MISC INCOME',
+  // A grace-used cert (만료로 잡이익 처리됐다가 고객 사용으로 90% 환원된 상태) — matches the
+  // renamed "잡이익 환원" terminology instead of exposing the raw GRACE_USED enum on the badge.
+  GRACE_USED: '잡이익 환원',
   // Virtual filter-only values (never stored) that split the single EXPIRED_RECOGNIZED status
   // into its still-reversible vs permanently-final halves — see viewCertificateList.js matches().
   MISC_REVERSIBLE: 'MISC INCOME',

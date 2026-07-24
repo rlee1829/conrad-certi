@@ -69,8 +69,16 @@ CertApp.importPipeline = (function () {
     var hasCheckNumber = /CHK\s*\d/.test(billUpper);
 
     if (isVoidSignal) {
-      var voidReason = (mapped.amountA === 0) ? CertApp.VOID_REASON.REFUND : CertApp.VOID_REASON.MISPRINT;
-      return { status: CertApp.STATUS.VOID, voidReason: voidReason, needsReview: false };
+      // The source has no refund-amount/refund-date columns, so the only signal on a voided row is
+      // whether any money is still recorded on it. The Excel convention for a void is to wipe the
+      // amount to 0 — that emptiness means "nothing was sold", i.e. an 오발행(misprint). The old
+      // rule read exactly that emptiness as a REFUND, which mislabelled every misprint and left
+      // "refunds" carrying no refund amount and no refund date (e.g. Pulse 001531–001540).
+      // A void that still carries money is genuinely ambiguous — it may be a refund with a
+      // retained penalty — so classify it conservatively as a misprint but flag it for review
+      // rather than inventing a refund that the source never recorded.
+      var moneyRecorded = (mapped.amountA || 0) > 0 || (b || 0) > 0 || cVal > 0;
+      return { status: CertApp.STATUS.VOID, voidReason: CertApp.VOID_REASON.MISPRINT, needsReview: moneyRecorded };
     }
 
     // Strongest redemption signal: a check number in the bill = a customer actually redeemed it.

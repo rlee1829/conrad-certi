@@ -495,9 +495,9 @@ CertApp.certificateWorkflow = (function () {
   // (this corrects a record directly, it isn't a new business event) and always clears
   // needsReview once saved. patch may include any editable ledger field: certificateNo,
   // status, amountA, paymentType, issuedDate, expiryDate, usedDate, outletPostingAmountB,
-  // miscRevPostingDate, arPostingAmountC, voidReason, refundDate, graceUseDate,
-  // certificateDetail, billNo. Setting status to VOID always zeroes amountA (face value
-  // forfeited) unless the caller explicitly supplies an amountA override.
+  // miscRevPostingDate, arPostingAmountC, refundAmount, voidReason, refundDate, graceUseDate,
+  // certificateDetail, billNo. amountA (face value) is only ever changed when explicitly in the
+  // patch — a status change, including to VOID, never alters it.
   function correctRecord(id, patch, note) {
     var rec = findRecord(id);
     var before = clone(rec);
@@ -513,10 +513,12 @@ CertApp.certificateWorkflow = (function () {
       if (!CertApp.STATUS[patch.status]) throw new Error('Unknown status: ' + patch.status);
       rec.status = patch.status;
     }
+    // amountA is the certificate's face value and is never auto-zeroed — not even on VOID. A
+    // void/refund preserves the face value (the refunded cash lives in refundAmount and the
+    // record still reconciles to 0 via varianceABC); zeroing it here silently wiped the sale and
+    // broke refund reconciliation whenever a VOID row was inline-edited without touching amountA.
     if (patch.amountA !== undefined) {
       rec.amountA = patch.amountA;
-    } else if (rec.status === CertApp.STATUS.VOID) {
-      rec.amountA = 0;
     }
     if (patch.paymentType !== undefined) rec.paymentType = patch.paymentType;
     if (patch.issuedDate !== undefined) rec.issuedDate = patch.issuedDate;

@@ -56,17 +56,13 @@ CertApp.accounting = (function () {
     return { outletPostingAmountB: 0, arPostingAmountC: penalty, refundAmount: a - penalty };
   }
 
-  // Reconciliation check — must land on 0 once a certificate is fully resolved. Every won of the
-  // face value has to end up in exactly one bucket: real revenue (B), misc income (C), or cash
-  // handed back (refundAmount). refundAmount is stored rather than derived precisely so a refund
-  // reconciles to 0 here instead of masquerading as an unaccounted balance; it is absent (=> 0)
-  // on every record that was never refunded, so this is unchanged for all existing data.
   // Korean gift-certificate (금액권) balance refund: once a guest has spent at least this share
   // of a voucher's face value, they can demand the unused balance back in cash. e.g. 100,000원
   // voucher, 60,000원 spent -> the remaining 40,000원 must be refunded.
-  // NOTE: Conrad Seoul applies a flat 60%. The 신유형 상품권 표준약관 baseline is tiered instead
-  // (60% at 10,000원 or below, 80% above), so if policy should follow the standard, change
-  // balanceRefundRate() to return the tiered rate — every caller reads it through this function.
+  // NOTE: Conrad Seoul applies a flat 60% (지류/paper vouchers). The 신유형 상품권 표준약관 baseline
+  // is tiered instead (60% at 10,000원 or below, 80% above), so if policy should follow the
+  // standard, change balanceRefundRate() to return the tiered rate — every caller reads it
+  // through this function.
   var GC_BALANCE_REFUND_RATE = 0.6;
   function balanceRefundRate(amountA) { return GC_BALANCE_REFUND_RATE; }
 
@@ -86,6 +82,11 @@ CertApp.accounting = (function () {
     };
   }
 
+  // Reconciliation check — must land on 0 once a certificate is fully resolved. Every won of the
+  // face value has to end up in exactly one bucket: real revenue (B), misc income (C), or cash
+  // handed back (refundAmount). refundAmount is stored rather than derived precisely so a refund
+  // reconciles to 0 here instead of masquerading as an unaccounted balance; it is absent (=> 0)
+  // on every record that was never refunded, so this is unchanged for all existing data.
   function varianceABC(record) {
     return (record.amountA || 0) - (record.outletPostingAmountB || 0) - (record.arPostingAmountC || 0)
       - (record.refundAmount || 0);

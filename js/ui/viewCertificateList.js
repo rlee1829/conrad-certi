@@ -1245,8 +1245,8 @@ CertApp.viewCertificateList = (function () {
     ui.openModal(t('cl.bulkVoid.title', { n: recs.length }), [
       ui.el('div', { class: 'muted' }, [recs.map(function (r) { return r.certificateNo; }).join(', ')]),
       ui.el('div', { style: 'margin:10px 0' }, [
-        ui.el('label', { style: 'margin-right:16px' }, [misprintRadio, t('cl.bulkVoid.misprint')]),
-        ui.el('label', {}, [refundRadio, t('cl.bulkVoid.refund')])
+        ui.el('label', { class: 'modal-choice' }, [misprintRadio, ' ' + t('cl.bulkVoid.misprint')]),
+        ui.el('label', { class: 'modal-choice' }, [refundRadio, ' ' + t('cl.bulkVoid.refund')])
       ]),
       fieldRow(t('cl.bulkVoid.refundDate'), refundDateInput),
       penaltyRow,

@@ -829,7 +829,9 @@ CertApp.viewCertificateList = (function () {
 
   function editableNumber(rec, field) {
     if (!unlockedIds[rec.id]) return ui.formatCurrency(cellValue(rec, field));
-    var input = ui.el('input', { type: 'number', value: cellValue(rec, field) });
+    // step 1000: these are 원 amounts (매출/잡이익/환불액 등), so the up/down spinner should move
+    // in 1,000원 steps, not 1원. Typing an exact figure is still unrestricted.
+    var input = ui.el('input', { type: 'number', step: '1000', value: cellValue(rec, field) });
     wireEdit(rec, field, input, true);
     return input;
   }
@@ -1060,7 +1062,7 @@ CertApp.viewCertificateList = (function () {
     var rowsData = recs.map(function (rec) {
       var late = isLateUse(rec, today);
       var split = late ? acc.computeLateUseSplit(rec.amountA) : { outletPostingAmountB: rec.amountA, arPostingAmountC: 0 };
-      var arInput = ui.el('input', { type: 'number', value: split.arPostingAmountC });
+      var arInput = ui.el('input', { type: 'number', step: '1000', value: split.arPostingAmountC });
       // Misc income posted at use time needs its own posting date — the ledger tracks when the
       // 잡이익 hit the books separately from the use date. Prefilled with today as soon as a
       // non-zero misc amount is entered, and required on save (see the confirm handler).
@@ -1074,8 +1076,8 @@ CertApp.viewCertificateList = (function () {
       // balance auto-fills here. It stays editable so an unusual split can be typed directly,
       // and the readout below shows the usage %, whether the law compels the refund, and whether
       // A = B + C + 환불액 still balances.
-      var amountInput = ui.el('input', { type: 'number', value: split.outletPostingAmountB });
-      var refundInput = ui.el('input', { type: 'number', value: 0 });
+      var amountInput = ui.el('input', { type: 'number', step: '1000', value: split.outletPostingAmountB });
+      var refundInput = ui.el('input', { type: 'number', step: '1000', value: 0 });
       var refundDateInput = ui.el('input', { type: 'date', value: today });
       var refundDateRow = fieldRow(t('cd.field.refundDate'), refundDateInput);
       var balanceInfo = ui.el('div', { class: 'balance-info' });
@@ -1122,7 +1124,7 @@ CertApp.viewCertificateList = (function () {
         refundDateRow: refundDateRow, balanceInfo: balanceInfo
       };
     });
-    var body = rowsData.map(function (rd) {
+    var perCertBlocks = rowsData.map(function (rd) {
       return ui.el('div', { style: 'border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px' }, [
         ui.el('div', { style: 'font-weight:700' }, [rd.rec.certificateNo + ' · ' + ui.formatCurrency(rd.rec.amountA)]),
         fieldRow(t('cl.bulkUse.usedDate'), rd.usedDateInput),
@@ -1135,6 +1137,30 @@ CertApp.viewCertificateList = (function () {
         fieldRow(t('cl.col.billNo'), rd.billNoInput)
       ]);
     });
+
+    var body = [];
+    // With more than one certificate selected, offer a shared 사용일 + 비고 that fills every row
+    // at once ("전체 적용"). Each row stays individually editable below, so a batch can be all-same
+    // with one click or fine-tuned per certificate.
+    if (recs.length > 1) {
+      var commonDate = ui.el('input', { type: 'date', value: today });
+      var commonBill = ui.el('input', { type: 'text', placeholder: t('cl.bulkUse.billNoPlaceholder') });
+      var applyBtn = ui.el('button', { class: 'btn btn-primary', text: t('cl.bulkUse.applyAll'), onclick: function () {
+        rowsData.forEach(function (rd) {
+          rd.usedDateInput.value = commonDate.value;
+          rd.billNoInput.value = commonBill.value;
+        });
+        ui.toast(t('cl.bulkUse.appliedAll', { n: rowsData.length }), 'success');
+      } });
+      body.push(ui.el('div', { class: 'bulkuse-common' }, [
+        ui.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px', text: t('cl.bulkUse.commonHint') }),
+        fieldRow(t('cl.bulkUse.usedDate'), commonDate),
+        fieldRow(t('cl.col.billNo'), commonBill),
+        ui.el('div', { style: 'margin-top:4px' }, [applyBtn])
+      ]));
+    }
+    perCertBlocks.forEach(function (b) { body.push(b); });
+
     ui.openModal(t('cl.bulkUse.title', { n: recs.length }), body, function () {
       // A misc-income amount without its posting date would leave the 잡이익 undated in the
       // ledger — block the save and point at the first offending certificate.

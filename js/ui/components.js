@@ -200,7 +200,8 @@ CertApp.ui.openPanel = function (title, bodyChildren) {
     CertApp.ui.el('div', { class: 'modal-body' }, bodyChildren)
   ]);
   backdrop.appendChild(box);
-  backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeFn(); });
+  // Deliberately no backdrop click-to-close here: a stray click outside a read panel used to
+  // dismiss it and lose the user's place. Close only via the × button.
   document.body.appendChild(backdrop);
   return closeFn;
 };
@@ -310,7 +311,8 @@ CertApp.ui.openModal = function (title, bodyChildren, onConfirm, confirmLabel) {
     ])
   ]);
   backdrop.appendChild(box);
-  backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeFn(); });
+  // No backdrop click-to-close: an accidental click outside a data-entry form (e.g. 사용 처리)
+  // must not discard everything typed. Close only via 취소 or the × button.
   document.body.appendChild(backdrop);
   return closeFn;
 };

@@ -490,3 +490,6 @@ input.amount-input { text-align: right; }
 .balance-info { font-size: 12px; margin: 2px 0 4px; color: var(--muted); }
 .balance-info.is-eligible { color: var(--accent-dark); font-weight: 700; }
 .balance-info.is-unbalanced { color: var(--danger); font-weight: 700; }
+
+/* 여러 건 사용처리 시 상단의 공통 입력 블록. */
+.bulkuse-common { background: #faf8f4; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 14px; }

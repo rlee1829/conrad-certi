@@ -1423,6 +1423,9 @@ CertApp.viewCertificateList = (function () {
         if (!unlockedIds[r.id] && (cur === null || cur === undefined || cur === '')) return '–';
         return editableNumber(r, 'refundAmount');
       } }, sortableHeader(t('cd.field.refundAmount'), 'refundAmount')),
+      // Paired with 환불액(D) the way 매출등록일 is paired with its amount — and it has to be
+      // inline-editable here, or the integrity check's "환불일 없음" finding has nowhere to be fixed.
+      { key: 'refundDate', label: t('cd.field.refundDate'), width: 88, format: function (v, r) { return editableDate(r, 'refundDate'); } },
       { key: 'variance', label: t('cl.col.variance'), width: 90, align: 'right', format: function (v, r) {
         // Mirrors accounting.varianceABC, but off the pending-edit values so an unlocked row
         // recomputes live as you type. Refunded cash is an accounted bucket, not a discrepancy.

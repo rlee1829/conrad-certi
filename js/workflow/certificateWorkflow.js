@@ -188,13 +188,12 @@ CertApp.certificateWorkflow = (function () {
     return CertApp.today();
   }
 
-  // "Issued by {operator}" (+ seller Opera ID if supplied) for the Note column on a newly
-  // issued certificate — falls back to just the Opera ID (or null) if no operator is set.
-  function issuerNote(sellerOperaId) {
+  // "발행: {operator}" for the 비고 column on a newly issued certificate — the operator's name
+  // only. The seller Opera ID used to be appended here; it added noise without identifying anyone
+  // the audit log doesn't already record, so 비고 now carries just the issuer.
+  function issuerNote() {
     var operatorName = CertApp.operator.get();
-    if (!operatorName) return sellerOperaId || null;
-    var note = CertApp.i18n.t('cl.bulkIssue.issuedBy', { name: operatorName });
-    return sellerOperaId ? (note + ' / ' + sellerOperaId) : note;
+    return operatorName ? CertApp.i18n.t('cl.bulkIssue.issuedBy', { name: operatorName }) : null;
   }
 
   // issueCertificate(input) -> Promise<CertificateRecord>
@@ -228,10 +227,9 @@ CertApp.certificateWorkflow = (function () {
       outletPostingAmountB: null,
       miscRevPostingDate: null,
       arPostingAmountC: null,
-      // Note column: records who issued it (current operator — see operator.js) alongside
-      // any seller Opera ID the caller supplied, so the issuer is traceable straight from
-      // the ledger, not just from the Audit Log.
-      billNo: issuerNote(input.sellerOperaId),
+      // Note column: records who issued it (current operator — see operator.js), so the issuer is
+      // traceable straight from the ledger, not just from the Audit Log.
+      billNo: issuerNote(),
       sellerOperaId: input.sellerOperaId || null,
       voidReason: null,
       refundDate: null,

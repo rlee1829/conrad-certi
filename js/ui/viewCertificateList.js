@@ -346,14 +346,14 @@ CertApp.viewCertificateList = (function () {
     var today = CertApp.today();
     var category = sellableCategoryKeys()[0];
     return { category: category, certificateNo: '', issuedDate: today, expiryDate: defaultExpiryFor(category, today),
-      amountA: defaultAmountFor(category), paymentType: '', certificateDetail: '', sellerOperaId: '', discountReceiptNote: '' };
+      amountA: defaultAmountFor(category), paymentType: '', certificateDetail: '', discountReceiptNote: '' };
   }
 
   function newQuickFill() {
     var today = CertApp.today();
     var category = sellableCategoryKeys()[0];
     return { category: category, startNo: '', qty: 10, amountA: defaultAmountFor(category),
-      issuedDate: today, paymentType: '', certificateDetail: '', note: '', discountReceiptNote: '' };
+      issuedDate: today, paymentType: '', certificateDetail: '', discountReceiptNote: '' };
   }
 
   function toggleBulkIssuePanel() {
@@ -525,7 +525,7 @@ CertApp.viewCertificateList = (function () {
         category: q.category, certificateNo: incrementCertNo(startNo, i),
         issuedDate: q.issuedDate, expiryDate: defaultExpiryFor(q.category, q.issuedDate),
         amountA: q.amountA, paymentType: q.paymentType,
-        certificateDetail: q.certificateDetail || '', _detailGroup: q._detailGroup, sellerOperaId: q.note || '',
+        certificateDetail: q.certificateDetail || '', _detailGroup: q._detailGroup,
         discountReceiptNote: q.discountReceiptNote || ''
       });
     }
@@ -620,7 +620,6 @@ CertApp.viewCertificateList = (function () {
     var detailField = catalogDetailSelect(q.category, q.certificateDetail,
       function (prod) { q.category = prod.category; q.amountA = prod.amount; q.certificateDetail = prod.detail; q._detailGroup = null; renderBulkIssuePanel(); },
       function (v) { q.certificateDetail = v; });
-    var noteInput = ui.el('input', { type: 'text', value: q.note, style: 'width:120px', placeholder: issuerNotePreview(), oninput: function (e) { q.note = e.target.value; } });
     var discountInput = ui.el('input', { type: 'text', value: q.discountReceiptNote, style: 'width:120px', oninput: function (e) { q.discountReceiptNote = e.target.value; } });
 
     function labeled(labelKey, el) { return ui.el('label', { class: 'quickfill-field' }, [ui.el('span', { text: t(labelKey) }), el]); }
@@ -640,18 +639,10 @@ CertApp.viewCertificateList = (function () {
         labeled('cl.bulkIssue.col.amount', amountField),
         labeled('cl.bulkIssue.col.issuedDate', issuedInput),
         labeled('cl.bulkIssue.col.paymentType', paymentField),
-        labeled('cl.bulkIssue.col.seller', noteInput),
         labeled('cl.col.discountReceipt', discountInput),
         ui.el('button', { class: 'btn btn-primary', text: t('cl.quickFill.generate'), onclick: onQuickGenerate })
       ])
     ]);
-  }
-
-  // What the workflow will auto-write into 비고 for this operator, e.g. "발행: 이지은 (Finance)".
-  // Shown as the 비고 placeholder so the automatic part is visible before saving.
-  function issuerNotePreview() {
-    var who = CertApp.operator.get();
-    return who ? t('cl.bulkIssue.issuedBy', { name: who }) : '';
   }
 
   function renderIssueRow(row, idx) {
@@ -680,15 +671,9 @@ CertApp.viewCertificateList = (function () {
     var expiryInput = dateTextInput(row.expiryDate, function (v) { row.expiryDate = v; });
     var amountField = amountFieldFor(row.category, row.amountA, function (v) { row.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
     var paymentField = selectWithOther(PAYMENT_OPTIONS, row.paymentType, function (v) { row.paymentType = v; });
-    // The operator's name is prepended to 비고 automatically on save (see workflow issuerNote), so
-    // show it as the placeholder — otherwise the empty box reads as "nothing will be recorded".
-    var sellerInput = ui.el('input', {
-      type: 'text', value: row.sellerOperaId, placeholder: issuerNotePreview(),
-      oninput: function (e) { row.sellerOperaId = e.target.value; }
-    });
     var discountInput = ui.el('input', { type: 'text', value: row.discountReceiptNote, oninput: function (e) { row.discountReceiptNote = e.target.value; } });
     var removeBtn = ui.el('button', { class: 'btn', text: '✕', onclick: function () { bulkIssueRows.splice(idx, 1); renderBulkIssuePanel(); } });
-    return ui.el('tr', {}, [catSelect, detailField, certNoInput, amountField, issuedInput, expiryInput, paymentField, sellerInput, discountInput, removeBtn]
+    return ui.el('tr', {}, [catSelect, detailField, certNoInput, amountField, issuedInput, expiryInput, paymentField, discountInput, removeBtn]
       .map(function (el) { return ui.el('td', {}, [el]); }));
   }
 
@@ -714,7 +699,7 @@ CertApp.viewCertificateList = (function () {
 
     var headerLabels = [
       t('cl.bulkIssue.col.category'), t('cl.bulkIssue.col.detail'), t('cl.bulkIssue.col.certNo'), t('cl.bulkIssue.col.amount'), t('cl.bulkIssue.col.issuedDate'),
-      t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.bulkIssue.col.seller'), t('cl.col.discountReceipt'), ''
+      t('cl.bulkIssue.col.expiryDate'), t('cl.bulkIssue.col.paymentType'), t('cl.col.discountReceipt'), ''
     ];
     var thead = ui.el('thead', {}, [ui.el('tr', {}, headerLabels.map(function (h) { return ui.el('th', { text: h }); }))]);
     var tbody = ui.el('tbody', {}, bulkIssueRows.map(renderIssueRow));
@@ -750,7 +735,7 @@ CertApp.viewCertificateList = (function () {
       return {
         category: row.category, certificateNo: row.certificateNo, issuedDate: row.issuedDate,
         expiryDate: row.expiryDate, amountA: Number(row.amountA), paymentType: row.paymentType || null,
-        certificateDetail: row.certificateDetail || null, sellerOperaId: row.sellerOperaId || null,
+        certificateDetail: row.certificateDetail || null,
         discountReceiptNote: row.discountReceiptNote || null
       };
     });

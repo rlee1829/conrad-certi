@@ -1269,7 +1269,13 @@ CertApp.viewCertificateList = (function () {
   function onBulkGraceUseSelected() {
     var recs = Object.keys(selectedIds)
       .map(function (id) { return CertApp.cache.certificates.find(function (r) { return r.id === id; }); })
-      .filter(function (r) { return r && r.status === CertApp.STATUS.EXPIRED_RECOGNIZED && !acc.isGiftCertificate(r.category); });
+      // Eligible = 잡이익 전환된 Service Cert AND still within the 5-year reversal window. A
+      // MISC (FINAL) record — a Gift Cert, or a Service Cert past 5 years — is permanent and
+      // cannot be reversed, so it is excluded here (and guarded again in graceUseExpired).
+      .filter(function (r) {
+        return r && r.status === CertApp.STATUS.EXPIRED_RECOGNIZED &&
+          !acc.isGiftCertificate(r.category) && !CertApp.isPastGraceWindow(r);
+      });
     if (recs.length === 0) { ui.toast(t('cl.noneForGrace'), 'warn'); return; }
 
     var today = CertApp.today();

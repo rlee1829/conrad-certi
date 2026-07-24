@@ -420,6 +420,11 @@ CertApp.certificateWorkflow = (function () {
     if (CertApp.accounting.isGiftCertificate(rec.category)) {
       throw new Error('Gift Certificates do not have a grace-use period (certificate ' + rec.certificateNo + ').');
     }
+    // Past the 5-year window a write-off is MISC (FINAL) — permanent, no reversal. The bulk UI
+    // already filters these out; guard here too so a direct call can't reverse a final record.
+    if (CertApp.isPastGraceWindow(rec)) {
+      throw new Error(CertApp.i18n.t('wf.graceUse.pastWindow', { certNo: rec.certificateNo }));
+    }
     assertTransition(rec, CertApp.STATUS.GRACE_USED);
     var graceUseDate = (input && input.graceUseDate) || todayIso();
     var split = CertApp.accounting.computeLateUseSplit(rec.amountA || 0);
@@ -428,12 +433,12 @@ CertApp.certificateWorkflow = (function () {
     var payoutEntry = {
       id: CertApp.uuid(), certificateId: rec.id, certificateNo: rec.certificateNo, category: rec.category,
       entryDate: graceUseDate, type: 'GRACE_USE_PAYOUT', amount: payoutAmount,
-      note: (input && input.note) || 'Grace use payout for ' + rec.certificateNo
+      note: (input && input.note) || CertApp.i18n.t('mr.gracePayoutNote', { certNo: rec.certificateNo })
     };
     var reversalEntry = {
       id: CertApp.uuid(), certificateId: rec.id, certificateNo: rec.certificateNo, category: rec.category,
       entryDate: graceUseDate, type: 'GRACE_USE_REVERSAL', amount: -payoutAmount,
-      note: (input && input.note) || 'Revenue reversal for ' + rec.certificateNo
+      note: (input && input.note) || CertApp.i18n.t('mr.graceReversalNote', { certNo: rec.certificateNo })
     };
 
     // Reflect the final resolved state directly on the record too (90% revenue / 10% misc

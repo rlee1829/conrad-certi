@@ -507,3 +507,12 @@ input.amount-input { text-align: right; }
 
 /* 상태 배지에 설명 툴팁이 있을 때: 점선 밑줄 + help 커서로 hover하면 뜻이 뜬다는 걸 알림. */
 .status-badge.has-help { cursor: help; text-decoration: underline dotted rgba(0,0,0,.35); text-underline-offset: 2px; }
+
+/* 정합성 점검 view */
+.summary-card.sc-ok .sc-value { color: var(--ok); }
+.summary-card.sc-danger .sc-value { color: var(--danger); }
+.summary-card.sc-warn .sc-value { color: var(--warn); }
+.ic-sev { display: inline-block; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 10.5px; font-weight: 800; }
+.ic-sev-error { background: var(--danger-light); color: var(--danger); }
+.ic-sev-warn { background: var(--warn-light); color: var(--warn); }
+.empty-state.ic-clean { color: var(--ok); font-weight: 700; }

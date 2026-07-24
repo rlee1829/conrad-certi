@@ -11,7 +11,14 @@ CertApp.i18n = (function () {
 
   var DICT = {
     ko: {
-      'nav.overview': '개요', 'nav.certlist': '증서 목록', 'nav.expiry': '만료 대기열', 'nav.miscRevenue': '잡이익 원장', 'nav.auditLog': '감사 로그', 'nav.importexport': '가져오기/내보내기',
+      'nav.overview': '개요', 'nav.certlist': '증서 목록', 'nav.expiry': '만료 대기열', 'nav.miscRevenue': '잡이익 원장', 'nav.integrity': '정합성 점검', 'nav.auditLog': '감사 로그', 'nav.importexport': '가져오기/내보내기',
+      'ic.desc': '모든 증서를 회계 규칙에 따라 점검해 이상 건을 찾아냅니다. 차액이 맞지 않거나, 만료 인식인데 매출로 잡혀 있거나, 환불인데 환불일이 없는 등 손으로 찾기 어려운 오분개를 한 번에 확인하고 바로 수정으로 연결됩니다.',
+      'ic.allChecks': '전체 점검 항목', 'ic.allSeverity': '전체 심각도', 'ic.sev.error': '오류', 'ic.sev.warn': '경고',
+      'ic.card.total': '총 이상', 'ic.card.error': '오류', 'ic.card.warn': '경고',
+      'ic.count': '{n}건 표시 (전체 이상 {total}건)', 'ic.clean': '이상 없음 — 모든 증서가 정합성 규칙을 통과했습니다. ✓', 'ic.noneForFilter': '이 조건에 해당하는 이상 건이 없습니다.',
+      'ic.col.severity': '심각도', 'ic.col.check': '점검 항목', 'ic.col.values': '현재값', 'ic.fix': '수정',
+      'ic.check.variance_nonzero': '차액(A−B−C−D)이 0이 아님', 'ic.check.recognized_revenue': '만료 인식인데 매출(B)에 금액', 'ic.check.refund_revenue': '환불인데 매출(B)에 금액',
+      'ic.check.used_no_date': '사용 처리인데 사용일 없음', 'ic.check.active_dirty': '유효 상태인데 사용/환불 정보가 남아 있음', 'ic.check.refund_no_date': '환불인데 환불일 없음', 'ic.check.active_no_amount': '발행된 유효 증서인데 금액(A) 없음',
       'mr.allTypes': '전체 유형', 'mr.count': '{n}건 (전체 {total}건 중)', 'mr.netBalance': '잡이익 순잔액', 'mr.empty': '잡이익 내역이 없습니다.',
       'sidebar.footerTitle': 'Gift & Service Certificate', 'sidebar.footerSub': '관리 대시보드',
 
@@ -193,7 +200,14 @@ CertApp.i18n = (function () {
       'ie.reclassify.done': '{n}건 정리 완료 (USED {used}건 · GRACE_USED {grace}건).', 'ie.reclassify.note': '사용 상태 재분류 (잡이익 있고 만료 후 사용 → GRACE_USED, 그 외 → USED)', 'ie.reclassify.verb': '재분류',
     },
     en: {
-      'nav.overview': 'Overview', 'nav.certlist': 'Certificate List', 'nav.expiry': 'Expiry Queue', 'nav.miscRevenue': 'Misc Income', 'nav.auditLog': 'Audit Log', 'nav.importexport': 'Import / Export',
+      'nav.overview': 'Overview', 'nav.certlist': 'Certificate List', 'nav.expiry': 'Expiry Queue', 'nav.miscRevenue': 'Misc Income', 'nav.integrity': 'Integrity Check', 'nav.auditLog': 'Audit Log', 'nav.importexport': 'Import / Export',
+      'ic.desc': 'Scans every certificate against the accounting rules and lists anomalies — variance that does not reconcile, a write-off booked as revenue, a refund with no refund date — each linked straight to a fix.',
+      'ic.allChecks': 'All checks', 'ic.allSeverity': 'All severities', 'ic.sev.error': 'Error', 'ic.sev.warn': 'Warning',
+      'ic.card.total': 'Total issues', 'ic.card.error': 'Errors', 'ic.card.warn': 'Warnings',
+      'ic.count': 'Showing {n} (of {total} issues)', 'ic.clean': 'All clear — every certificate passes the integrity rules. ✓', 'ic.noneForFilter': 'No issues match this filter.',
+      'ic.col.severity': 'Severity', 'ic.col.check': 'Check', 'ic.col.values': 'Current values', 'ic.fix': 'Fix',
+      'ic.check.variance_nonzero': 'Variance (A−B−C−D) is not zero', 'ic.check.recognized_revenue': 'Recognized (write-off) but amount in Outlet Posting (B)', 'ic.check.refund_revenue': 'Refund but amount in Outlet Posting (B)',
+      'ic.check.used_no_date': 'Used but no used date', 'ic.check.active_dirty': 'Active but carries used/refund/misc data', 'ic.check.refund_no_date': 'Refund but no refund date', 'ic.check.active_no_amount': 'Issued active certificate with no amount (A)',
       'mr.allTypes': 'All Types', 'mr.count': '{n} of {total}', 'mr.netBalance': 'Net Misc Income', 'mr.empty': 'No misc income entries.',
       'sidebar.footerTitle': 'Gift & Service Certificate', 'sidebar.footerSub': 'Management Dashboard',
 

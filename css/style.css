@@ -494,3 +494,6 @@ input.amount-input { text-align: right; }
 
 /* 여러 건 사용처리 시 상단의 공통 입력 블록. */
 .bulkuse-common { background: #faf8f4; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 14px; }
+
+/* 상태 배지에 설명 툴팁이 있을 때: 점선 밑줄 + help 커서로 hover하면 뜻이 뜬다는 걸 알림. */
+.status-badge.has-help { cursor: help; text-decoration: underline dotted rgba(0,0,0,.35); text-underline-offset: 2px; }

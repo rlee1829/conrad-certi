@@ -113,6 +113,28 @@ CertApp.displayStatusLabelForRecord = function (rec, effectiveStatus) {
   return CertApp.displayStatusLabel(status);
 };
 
+// Plain-language explanation of what a status MEANS for this specific record — shown as the
+// tooltip on the status badge (see components.js ui.statusBadge). Context-aware like
+// displayStatusLabelForRecord: the same badge means different things by 종류(category) and by
+// whether the 5-year grace window has passed, which is exactly what users find confusing.
+CertApp.statusHelp = function (rec, effectiveStatus) {
+  if (!rec || !CertApp.i18n) return '';
+  var t = CertApp.i18n.t;
+  var status = effectiveStatus || rec.status;
+  var isGift = CertApp.accounting && CertApp.accounting.isGiftCertificate(rec.category);
+  if (status === CertApp.STATUS.VOID) {
+    return t(rec.voidReason === CertApp.VOID_REASON.REFUND ? 'help.status.void_refund' : 'help.status.void_misprint');
+  }
+  if (status === CertApp.STATUS.EXPIRED_RECOGNIZED) {
+    return t((isGift || CertApp.isPastGraceWindow(rec)) ? 'help.status.misc_final' : 'help.status.misc_reversible');
+  }
+  if (status === CertApp.VIRTUAL_STATUS.EXPIRED_PENDING) {
+    return t((!isGift && CertApp.isPastGraceWindow(rec)) ? 'help.status.expired_final' : 'help.status.expired');
+  }
+  var key = { ACTIVE: 'help.status.active', USED: 'help.status.used', GRACE_USED: 'help.status.grace' }[status];
+  return key ? t(key) : '';
+};
+
 CertApp.VOID_REASON = {
   MISPRINT: 'MISPRINT',
   REFUND: 'REFUND',

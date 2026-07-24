@@ -72,7 +72,12 @@ CertApp.ui.statusBadge = function (statusText, rec) {
   var cls = STATUS_BADGE_CLASS[statusText] || 'badge-default';
   var label = rec ? CertApp.displayStatusLabelForRecord(rec, statusText) : CertApp.displayStatusLabel(statusText);
   if (rec && label.indexOf('FINAL') !== -1) cls += ' badge-final';
-  return CertApp.ui.el('span', { class: 'status-badge ' + cls, text: label });
+  // Hover tooltip explaining what this status means for THIS record (see schema.statusHelp) —
+  // the meaning shifts by 종류/유효기간, which is what makes the bare label confusing.
+  var attrs = { class: 'status-badge ' + cls, text: label };
+  var help = rec ? CertApp.statusHelp(rec, statusText) : '';
+  if (help) { attrs.title = help; attrs.class += ' has-help'; }
+  return CertApp.ui.el('span', attrs);
 };
 
 // Table renderer: columns = [{key, label, format?, onHeaderClick?, align?}], rows = array of

@@ -46,6 +46,24 @@ CertApp.viewMiscRevenue = (function () {
     return true;
   }
 
+  // Backfill the ledger from certificate records so every write-off / refund penalty that lives
+  // on a certificate also has a 잡이익 원장 entry (imported records carry the misc income on the
+  // certificate but were never written to the ledger). Idempotent — only creates what's missing.
+  function onSyncLedger() {
+    var missing = CertApp.certificateWorkflow.findMissingMiscEntries();
+    if (missing.length === 0) { ui.toast(t('mr.sync.none'), 'info'); return; }
+    var total = missing.reduce(function (s, r) { return s + (r.arPostingAmountC || 0); }, 0);
+    ui.openModal(t('mr.sync.title'), [
+      ui.el('div', {}, [t('mr.sync.body', { n: ui.formatNumber(missing.length), amount: ui.formatCurrency(total) })]),
+      ui.el('div', { class: 'warn-text', style: 'margin-top:8px' }, [t('mr.sync.undoNote')])
+    ], function () {
+      CertApp.certificateWorkflow.syncMiscRevenueLedger().then(function (res) {
+        ui.toast(t('mr.sync.done', { n: ui.formatNumber(res.created) }), 'success');
+        CertApp.router.refresh();
+      }).catch(function (err) { ui.toast(err.message, 'error'); });
+    }, t('mr.sync.confirm'));
+  }
+
   function render(container) {
     state = { category: '', type: '' };
     var wrap = ui.el('div', { class: 'view-misc-revenue' });
@@ -62,7 +80,8 @@ CertApp.viewMiscRevenue = (function () {
     var controls = ui.el('div', { class: 'panel controls-row controls-row-tight' }, [
       ui.el('select', { onchange: function (e) { state.category = e.target.value; renderTable(); } }, catOptions),
       ui.el('select', { onchange: function (e) { state.type = e.target.value; renderTable(); } }, typeOptions),
-      ui.refreshButton()
+      ui.refreshButton(),
+      ui.el('button', { class: 'btn btn-primary', text: t('mr.sync.button'), onclick: onSyncLedger })
     ]);
     wrap.appendChild(controls);
 

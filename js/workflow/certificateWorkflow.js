@@ -859,7 +859,75 @@ CertApp.certificateWorkflow = (function () {
     });
   }
 
+  // Which misc-income ledger entry a certificate SHOULD have, given its resolved state — used by
+  // the ledger-sync below to backfill entries for imported records that carry misc income (C) on
+  // the certificate but were never written into the Misc Revenue ledger. Grace-used certs are
+  // excluded: their payout/reversal pair is booked by graceUseExpired, not a single write-off.
+  function expectedMiscEntryType(rec) {
+    if ((rec.arPostingAmountC || 0) <= 0) return null;
+    if (rec.status === CertApp.STATUS.EXPIRED_RECOGNIZED) return 'WRITE_OFF';
+    if (rec.status === CertApp.STATUS.VOID && rec.voidReason === CertApp.VOID_REASON.REFUND) return 'REFUND_PENALTY';
+    return null;
+  }
+
+  // Records whose certificate carries misc income (C) but have no matching ledger entry yet.
+  function findMissingMiscEntries() {
+    var present = {}; // certificateId -> { type: true }
+    CertApp.cache.miscRevenue.forEach(function (e) { (present[e.certificateId] = present[e.certificateId] || {})[e.type] = true; });
+    return CertApp.cache.certificates.filter(function (r) {
+      var type = expectedMiscEntryType(r);
+      return type && !(present[r.id] && present[r.id][type]);
+    });
+  }
+
+  // syncMiscRevenueLedger() -> Promise<{ created }>. Backfills the Misc Revenue ledger from the
+  // certificate records so the 잡이익 원장 fully reflects every write-off / refund penalty that
+  // lives on a certificate. Idempotent (skips certs that already have their entry) and undoable
+  // (the created entries are tracked as the last action). Reads the entry date from the record's
+  // own posting/resolution date so the ledger lands in the right period.
+  function syncMiscRevenueLedger() {
+    return withBatch(function () {
+      // Read the ledger fresh from the DB (source of truth) rather than trusting the in-memory
+      // cache, which could still be loading or stale — building the "already present" map from an
+      // empty cache would treat every entry as missing and duplicate the whole ledger. Reconcile
+      // the fetched rows into the cache too, so the map and the cache agree.
+      return CertApp.db.getAll('miscRevenueEntries').then(function (ledger) {
+        var byId = {};
+        CertApp.cache.miscRevenue.forEach(function (e) { byId[e.id] = e; });
+        ledger.forEach(function (e) { if (!byId[e.id]) { CertApp.cache.miscRevenue.push(e); byId[e.id] = e; } });
+
+        var present = {};
+        ledger.forEach(function (e) { (present[e.certificateId] = present[e.certificateId] || {})[e.type] = true; });
+        var missing = CertApp.cache.certificates.filter(function (r) {
+          var type = expectedMiscEntryType(r);
+          return type && !(present[r.id] && present[r.id][type]);
+        });
+        if (missing.length === 0) return { created: 0 };
+        var rate = Math.round(CertApp.accounting.REFUND_PENALTY_RATE * 100);
+        var entries = missing.map(function (r) {
+          var type = expectedMiscEntryType(r);
+          var amount = r.arPostingAmountC || 0;
+          var note = type === 'REFUND_PENALTY'
+            ? CertApp.i18n.t('mr.refundPenaltyNote', { pct: rate, refund: ((r.refundAmount || 0)).toLocaleString('ko-KR') })
+            : CertApp.i18n.t('mr.writeOffNote');
+          return {
+            id: CertApp.uuid(), certificateId: r.id, certificateNo: r.certificateNo, category: r.category,
+            entryDate: r.miscRevPostingDate || r.refundDate || r.usedDate || r.issuedDate || todayIso(),
+            type: type, amount: amount, note: note
+          };
+        });
+        entries.forEach(function (e) { CertApp.cache.miscRevenue.push(e); });
+        return CertApp.db.putMany('miscRevenueEntries', entries).then(function () {
+          setLastAction(CertApp.i18n.t('mr.sync.undoLabel', { n: entries.length }), [], [], entries.map(function (e) { return e.id; }));
+          return { created: entries.length };
+        });
+      });
+    });
+  }
+
   return {
+    findMissingMiscEntries: findMissingMiscEntries,
+    syncMiscRevenueLedger: syncMiscRevenueLedger,
     logBulkImport: logBulkImport,
     flagDuplicateCertificateNumbers: flagDuplicateCertificateNumbers,
     reclassifyMisimportedExpiries: reclassifyMisimportedExpiries,

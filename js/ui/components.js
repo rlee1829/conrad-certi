@@ -209,14 +209,40 @@ CertApp.ui.openPanel = function (title, bodyChildren) {
 // Prompts for the local operator name (see operator.js) and re-renders the sidebar chip on
 // save. Used both for the initial one-time prompt on boot and the "change" click afterward.
 CertApp.ui.promptOperator = function (onSaved) {
-  var t = CertApp.i18n.t;
-  var input = CertApp.ui.el('input', { type: 'text', value: CertApp.operator.get(), placeholder: t('operator.nameLabel') });
-  CertApp.ui.openModal(CertApp.operator.get() ? t('operator.changeTitle') : t('operator.promptTitle'), [
-    CertApp.ui.el('div', { class: 'muted', style: 'margin-bottom:10px' }, [t('operator.promptDesc')]),
-    CertApp.ui.el('div', {}, [CertApp.ui.el('label', { text: t('operator.nameLabel') }), input])
+  var ui = CertApp.ui, t = CertApp.i18n.t;
+  var input = ui.el('input', { type: 'text', value: CertApp.operator.getName(), placeholder: t('operator.nameLabel') });
+
+  // Department picker: the built-in/known departments plus a "기타(직접 입력)" choice that reveals
+  // a free-text box; a newly typed department is remembered for next time (operator.addDepartment).
+  var OTHER = '__other__';
+  var curDept = CertApp.operator.getDept();
+  var depts = CertApp.operator.departments();
+  var deptOptions = [ui.el('option', Object.assign({ value: '', text: '—' }, curDept === '' ? { selected: 'selected' } : {}))]
+    .concat(depts.map(function (d) {
+      return ui.el('option', Object.assign({ value: d, text: d }, d === curDept ? { selected: 'selected' } : {}));
+    }))
+    .concat([ui.el('option', { value: OTHER, text: t('operator.deptOther') })]);
+  var deptSelect = ui.el('select', {}, deptOptions);
+  var deptOther = ui.el('input', { type: 'text', placeholder: t('operator.deptOtherPlaceholder'), style: 'margin-top:8px' });
+  deptOther.style.display = 'none';
+  deptSelect.addEventListener('change', function () {
+    var isOther = deptSelect.value === OTHER;
+    deptOther.style.display = isOther ? '' : 'none';
+    if (isOther) deptOther.focus();
+  });
+
+  var isChange = !!CertApp.operator.getName();
+  ui.openModal(isChange ? t('operator.changeTitle') : t('operator.promptTitle'), [
+    ui.el('div', { class: 'muted', style: 'margin-bottom:10px' }, [t('operator.promptDesc')]),
+    ui.el('div', { style: 'margin-bottom:10px' }, [ui.el('label', { text: t('operator.nameLabel') }), input]),
+    ui.el('div', {}, [ui.el('label', { text: t('operator.deptLabel') }), deptSelect, deptOther])
   ], function () {
-    CertApp.operator.set(input.value);
-    CertApp.ui.renderOperatorChip();
+    var name = input.value.trim();
+    if (!name) { ui.toast(t('operator.nameRequired'), 'warn'); input.focus(); return false; }
+    var dept = deptSelect.value === OTHER ? deptOther.value.trim() : deptSelect.value;
+    if (deptSelect.value === OTHER && dept) CertApp.operator.addDepartment(dept);
+    CertApp.operator.set(name, dept);
+    ui.renderOperatorChip();
     if (onSaved) onSaved();
   }, t('common.save'));
 };
@@ -226,13 +252,14 @@ CertApp.ui.renderOperatorChip = function () {
   var el = document.getElementById('operator-chip');
   if (!el) return;
   var t = CertApp.i18n.t;
-  var name = CertApp.operator.get();
+  // get() is the combined "이름 (부서)" display — same string that lands in the audit log.
+  var display = CertApp.operator.get();
   el.innerHTML = '';
   el.appendChild(CertApp.ui.el('button', {
     class: 'operator-chip-btn', onclick: function () { CertApp.ui.promptOperator(); }
   }, [
     CertApp.ui.el('span', { class: 'operator-chip-label', text: t('operator.label') + ': ' }),
-    CertApp.ui.el('span', { class: 'operator-chip-name', text: name || t('operator.unset') })
+    CertApp.ui.el('span', { class: 'operator-chip-name', text: display || t('operator.unset') })
   ]));
 };
 

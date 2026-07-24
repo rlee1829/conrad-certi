@@ -949,6 +949,7 @@ CertApp.viewCertificateList = (function () {
       if (state.needsReviewOnly) {
         bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.markReviewed'), onclick: onMarkReviewedSelected }));
       }
+      bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkField'), onclick: onBulkFieldSet }));
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkUse'), onclick: onBulkUseSelected }));
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkVoid'), onclick: onBulkVoidSelected }));
       bar.appendChild(ui.el('button', { class: 'btn', text: t('cl.toolbar.bulkGrace'), onclick: onBulkGraceUseSelected }));
@@ -988,6 +989,74 @@ CertApp.viewCertificateList = (function () {
         CertApp.router.refresh();
       }).catch(function (err) { ui.toast(err.message, 'error'); });
     }, t('cl.bulkUse.confirm'));
+  }
+
+  // Fields offered by 일괄 입력, with the input type to render. Deliberately limited to the
+  // fields that are genuinely set in bulk (a shared date, a shared note, a shared amount) —
+  // status/category stay out because changing those needs the per-row smart defaults.
+  var BULK_FIELDS = [
+    { field: 'refundDate', label: 'cd.field.refundDate', type: 'date' },
+    { field: 'usedDate', label: 'cl.col.usedDate', type: 'date' },
+    { field: 'miscRevPostingDate', label: 'cl.col.miscRevDate', type: 'date' },
+    { field: 'expiryDate', label: 'cl.col.expiryDate', type: 'date' },
+    { field: 'billNo', label: 'cl.col.billNo', type: 'text' },
+    { field: 'discountReceiptNote', label: 'cl.col.discountReceipt', type: 'text' },
+    { field: 'paymentType', label: 'cl.col.paymentType', type: 'text' },
+    { field: 'certificateDetail', label: 'cl.col.detail', type: 'text' },
+    { field: 'refundAmount', label: 'cd.field.refundAmount', type: 'number' },
+    { field: 'arPostingAmountC', label: 'cl.col.arC', type: 'number' },
+    { field: 'outletPostingAmountB', label: 'cl.col.outletB', type: 'number' }
+  ];
+
+  // 일괄 입력: set ONE field to the SAME value across every selected row, in one audited save —
+  // the batch corrections that previously needed a per-row unlock-and-type pass.
+  function onBulkFieldSet() {
+    var ids = Object.keys(selectedIds);
+    if (ids.length === 0) return;
+
+    var fieldSelect = ui.el('select', {}, BULK_FIELDS.map(function (f) {
+      return ui.el('option', { value: f.field, text: t(f.label) });
+    }));
+    var valueHolder = ui.el('div', {});
+    var valueInput = null;
+    function renderValueInput() {
+      var def = BULK_FIELDS.filter(function (f) { return f.field === fieldSelect.value; })[0] || BULK_FIELDS[0];
+      valueInput = ui.el('input', def.type === 'number' ? { type: 'number', step: '1000' } : { type: def.type });
+      valueHolder.innerHTML = '';
+      valueHolder.appendChild(valueInput);
+    }
+    fieldSelect.addEventListener('change', renderValueInput);
+    renderValueInput();
+
+    var reasons = loadEditReasons();
+    var suggestion = reasons[0] || t('cl.saveConfirm.defaultReason');
+    var dlId = 'bulk-field-reason-dl';
+    var datalist = ui.el('datalist', { id: dlId }, reasons.map(function (r) { return ui.el('option', { value: r }); }));
+    var noteInput = ui.el('input', { type: 'text', list: dlId, autocomplete: 'off' });
+    wireTabSuggestion(noteInput, suggestion, function () {});
+
+    ui.openModal(t('cl.bulkField.title', { n: ids.length }), [
+      ui.el('div', { class: 'muted' }, [t('cl.bulkField.desc', { n: ui.formatNumber(ids.length) })]),
+      fieldRow(t('cl.bulkField.field'), fieldSelect),
+      ui.el('div', {}, [ui.el('label', { text: t('cl.bulkField.value') }), valueHolder]),
+      fieldRow(t('cl.saveConfirm.noteLabel'), noteInput),
+      datalist
+    ], function () {
+      var reason = noteInput.value.trim();
+      if (!reason) { ui.toast(t('cl.saveConfirm.reasonRequired'), 'warn'); noteInput.focus(); return false; }
+      var def = BULK_FIELDS.filter(function (f) { return f.field === fieldSelect.value; })[0];
+      var raw = valueInput.value.trim();
+      // A blank value clears the field (null); numbers go in as numbers so the ledger math works.
+      var value = raw === '' ? null : (def.type === 'number' ? Number(raw) : raw);
+      rememberEditReason(reason);
+      var patches = {};
+      ids.forEach(function (id) { patches[id] = {}; patches[id][def.field] = value; });
+      CertApp.certificateWorkflow.bulkCorrectRecords(patches, reason).then(function (result) {
+        reportBulkResult(result.count, result.errors, t('cl.verb.save'));
+        pendingRowEdits = {}; unlockedIds = {}; rowInputs = {}; selectedIds = {};
+        refresh();   // stay on the current filters/page
+      }).catch(function (err) { ui.toast(err.message, 'error'); });
+    }, t('common.save'));
   }
 
   function onSaveRowEdits() {

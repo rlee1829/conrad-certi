@@ -17,9 +17,11 @@ CertApp.exportWorkbook = (function () {
   var LEDGER_HEADER_BASE = [
     'No.', 'Issued Date', 'Expiry Date', 'Status', 'Certificate No', 'D/C', 'Amount (A)', 'Payment Type'
   ];
+  // Refunded (D) sits between AR Posting (C) and Variance so the sheet reads as the arithmetic it
+  // is — A − B − C − D = Variance — and a refund is no longer an unexplained gap in the export.
   var LEDGER_HEADER_TAIL = [
     'Used Date', 'Outlet Posting Amount (B)', 'Misc Rev Posting Date', 'AR Posting Amount (C)',
-    'Variance (A)-(B)-(C)', 'Used Amount (B)+(C)', 'Bill No. / Room No.'
+    'Refunded (D)', 'Variance (A)-(B)-(C)-(D)', 'Used Amount (B)+(C)', 'Bill No. / Room No.'
   ];
   var HEADER_WIDTH = LEDGER_HEADER_BASE.length + LEDGER_HEADER_TAIL.length; // + 1 more if Certificate Detail included
 
@@ -42,7 +44,7 @@ CertApp.exportWorkbook = (function () {
     row[7] = rec.paymentType;
     var tail = [
       dateCell(rec.usedDate), rec.outletPostingAmountB, dateCell(rec.miscRevPostingDate), rec.arPostingAmountC,
-      acc.varianceABC(rec), acc.usedAmountBC(rec), rec.billNo
+      rec.refundAmount, acc.varianceABC(rec), acc.usedAmountBC(rec), rec.billNo
     ];
     if (includeCertDetail) row.push(rec.certificateDetail);
     return row.concat(tail);
@@ -67,7 +69,7 @@ CertApp.exportWorkbook = (function () {
   function columnWidths(includeCertDetail) {
     var widths = [6, 11, 11, 14, 13, 6, 11, 10]; // No./Issued/Expiry/Status/CertNo/D-C/Amount/Payment
     if (includeCertDetail) widths.push(26); // Certificate Detail
-    widths = widths.concat([11, 14, 14, 12, 12, 14, 18]); // Used/OutletB/MiscRevDate/ArC/Variance/UsedAmt/BillNo
+    widths = widths.concat([11, 14, 14, 12, 12, 14, 14, 18]); // Used/OutletB/MiscRevDate/ArC/Refunded(D)/Variance/UsedAmt/BillNo
     return widths.map(function (w) { return { wch: w }; });
   }
 

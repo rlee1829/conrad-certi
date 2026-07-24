@@ -1324,40 +1324,40 @@ CertApp.viewCertificateList = (function () {
     // Fixed pixel widths (see ui.renderTable colgroup) keep every column the same size across
     // sorts/pages regardless of the values shown.
     var columns = [
-      { key: 'select', label: '', width: 34, headerNode: selectAllCb, format: function (v, r) { return checkboxCell(r); } },
-      { key: 'rowNo', label: t('cl.col.no'), width: 46 },
-      Object.assign({ key: 'certificateNo', width: 96, format: function (v, r) { return certNoCell(r); } }, sortableHeader(t('cl.col.certNo'), 'certificateNo')),
-      Object.assign({ key: 'category', width: 132, align: 'left', format: function (v) { return CertApp.CATEGORY_LABEL[v] || v; } }, sortableHeader(t('cl.col.category'), 'category')),
-      Object.assign({ key: 'status', width: 124, format: function (v, r) { return editableStatus(r); } }, sortableHeader(t('cl.col.status'), 'status')),
+      { key: 'select', label: '', width: 30, headerNode: selectAllCb, format: function (v, r) { return checkboxCell(r); } },
+      { key: 'rowNo', label: t('cl.col.no'), width: 36 },
+      Object.assign({ key: 'certificateNo', width: 82, format: function (v, r) { return certNoCell(r); } }, sortableHeader(t('cl.col.certNo'), 'certificateNo')),
+      Object.assign({ key: 'category', width: 126, align: 'left', format: function (v) { return CertApp.CATEGORY_LABEL[v] || v; } }, sortableHeader(t('cl.col.category'), 'category')),
+      Object.assign({ key: 'status', width: 108, format: function (v, r) { return editableStatus(r); } }, sortableHeader(t('cl.col.status'), 'status')),
       Object.assign({ key: 'amountA', width: 92, align: 'right', format: function (v, r) { return editableAmount(r); } }, sortableHeader(t('cl.col.amountA'), 'amountA')),
       { key: 'paymentType', label: t('cl.col.paymentType'), width: 84, format: function (v, r) {
         // Unlocked rows edit the raw stored value; locked rows show the canonical label (CA -> Cash).
         return unlockedIds[r.id] ? editableText(r, 'paymentType') : CertApp.displayPaymentType(cellValue(r, 'paymentType'));
       } },
-      Object.assign({ key: 'issuedDate', width: 100, format: function (v, r) { return editableDate(r, 'issuedDate'); } }, sortableHeader(t('cl.col.issuedDate'), 'issuedDate')),
-      Object.assign({ key: 'expiryDate', width: 100, format: function (v, r) { return editableDate(r, 'expiryDate'); } }, sortableHeader(t('cl.col.expiryDate'), 'expiryDate')),
-      Object.assign({ key: 'usedDate', width: 100, format: function (v, r) { return editableDate(r, 'usedDate'); } }, sortableHeader(t('cl.col.usedDate'), 'usedDate')),
-      Object.assign({ key: 'outletPostingAmountB', width: 104, align: 'right', format: function (v, r) { return editableNumber(r, 'outletPostingAmountB'); } }, sortableHeader(t('cl.col.outletB'), 'outletPostingAmountB')),
-      { key: 'miscRevPostingDate', label: t('cl.col.miscRevDate'), width: 118, format: function (v, r) { return editableDate(r, 'miscRevPostingDate'); } },
-      Object.assign({ key: 'arPostingAmountC', width: 96, align: 'right', format: function (v, r) { return editableNumber(r, 'arPostingAmountC'); } }, sortableHeader(t('cl.col.arC'), 'arPostingAmountC')),
+      Object.assign({ key: 'issuedDate', width: 88, format: function (v, r) { return editableDate(r, 'issuedDate'); } }, sortableHeader(t('cl.col.issuedDate'), 'issuedDate')),
+      Object.assign({ key: 'expiryDate', width: 88, format: function (v, r) { return editableDate(r, 'expiryDate'); } }, sortableHeader(t('cl.col.expiryDate'), 'expiryDate')),
+      Object.assign({ key: 'usedDate', width: 88, format: function (v, r) { return editableDate(r, 'usedDate'); } }, sortableHeader(t('cl.col.usedDate'), 'usedDate')),
+      Object.assign({ key: 'outletPostingAmountB', width: 94, align: 'right', format: function (v, r) { return editableNumber(r, 'outletPostingAmountB'); } }, sortableHeader(t('cl.col.outletB'), 'outletPostingAmountB')),
+      { key: 'miscRevPostingDate', label: t('cl.col.miscRevDate'), width: 90, format: function (v, r) { return editableDate(r, 'miscRevPostingDate'); } },
+      Object.assign({ key: 'arPostingAmountC', width: 90, align: 'right', format: function (v, r) { return editableNumber(r, 'arPostingAmountC'); } }, sortableHeader(t('cl.col.arC'), 'arPostingAmountC')),
       // Sits between 잡이익(C) and 차액 so the row reads as the arithmetic it is: A − B − C − 환불액 = 차액.
-      Object.assign({ key: 'refundAmount', width: 96, align: 'right', format: function (v, r) {
+      Object.assign({ key: 'refundAmount', width: 90, align: 'right', format: function (v, r) {
         // Only a handful of records are ever refunded — show a dash rather than "0원" on the
         // rest, so the column reads as "no refund" instead of "refunded nothing".
         var cur = cellValue(r, 'refundAmount');
         if (!unlockedIds[r.id] && (cur === null || cur === undefined || cur === '')) return '–';
         return editableNumber(r, 'refundAmount');
       } }, sortableHeader(t('cd.field.refundAmount'), 'refundAmount')),
-      { key: 'variance', label: t('cl.col.variance'), width: 96, align: 'right', format: function (v, r) {
+      { key: 'variance', label: t('cl.col.variance'), width: 90, align: 'right', format: function (v, r) {
         // Mirrors accounting.varianceABC, but off the pending-edit values so an unlocked row
         // recomputes live as you type. Refunded cash is an accounted bucket, not a discrepancy.
         var a = cellValue(r, 'amountA') || 0, b = cellValue(r, 'outletPostingAmountB') || 0;
         var c = cellValue(r, 'arPostingAmountC') || 0, refund = cellValue(r, 'refundAmount') || 0;
         return ui.formatCurrency(a - b - c - refund);
       } },
-      { key: 'certificateDetail', label: t('cl.col.detail'), width: 150, format: function (v, r) { return editableText(r, 'certificateDetail'); } },
-      { key: 'billNo', label: t('cl.col.billNo'), width: 150, align: 'left', format: function (v, r) { return editableText(r, 'billNo'); } },
-      { key: 'discountReceiptNote', label: t('cl.col.discountReceipt'), width: 140, align: 'left', format: function (v, r) { return editableText(r, 'discountReceiptNote'); } }
+      { key: 'certificateDetail', label: t('cl.col.detail'), width: 124, format: function (v, r) { return editableText(r, 'certificateDetail'); } },
+      { key: 'billNo', label: t('cl.col.billNo'), width: 120, align: 'left', format: function (v, r) { return editableText(r, 'billNo'); } },
+      { key: 'discountReceiptNote', label: t('cl.col.discountReceipt'), width: 112, align: 'left', format: function (v, r) { return editableText(r, 'discountReceiptNote'); } }
     ];
 
     ui.renderTable(document.getElementById('cl-table-wrap'), columns, displayRows);

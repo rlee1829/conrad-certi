@@ -128,7 +128,11 @@ body {
 
 /* Certificate List: dense rows so a full page (20) fits the viewport height without a vertical
    scrollbar; the list still scrolls horizontally for its many columns. */
-.view-certlist .data-table th, .view-certlist .data-table td { padding: 4px 6px; font-size: 11.5px; }
+.view-certlist .data-table th, .view-certlist .data-table td { padding: 3px 3px; font-size: 11.5px; }
+/* Certificate List: every column HEADER is centered (제목 가운데 정렬), regardless of how the
+   body cells align — this rule outranks the per-column .col-align-left/right on <th> because it
+   carries more classes; the <td> alignment is untouched. */
+.view-certlist .data-table thead th { text-align: center; }
 .product-select { min-width: 200px; }
 .view-certlist .panel { padding: 10px 10px; margin-bottom: 10px; }
 

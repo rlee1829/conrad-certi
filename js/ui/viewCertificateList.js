@@ -620,7 +620,7 @@ CertApp.viewCertificateList = (function () {
     var detailField = catalogDetailSelect(q.category, q.certificateDetail,
       function (prod) { q.category = prod.category; q.amountA = prod.amount; q.certificateDetail = prod.detail; q._detailGroup = null; renderBulkIssuePanel(); },
       function (v) { q.certificateDetail = v; });
-    var noteInput = ui.el('input', { type: 'text', value: q.note, style: 'width:120px', oninput: function (e) { q.note = e.target.value; } });
+    var noteInput = ui.el('input', { type: 'text', value: q.note, style: 'width:120px', placeholder: issuerNotePreview(), oninput: function (e) { q.note = e.target.value; } });
     var discountInput = ui.el('input', { type: 'text', value: q.discountReceiptNote, style: 'width:120px', oninput: function (e) { q.discountReceiptNote = e.target.value; } });
 
     function labeled(labelKey, el) { return ui.el('label', { class: 'quickfill-field' }, [ui.el('span', { text: t(labelKey) }), el]); }
@@ -645,6 +645,13 @@ CertApp.viewCertificateList = (function () {
         ui.el('button', { class: 'btn btn-primary', text: t('cl.quickFill.generate'), onclick: onQuickGenerate })
       ])
     ]);
+  }
+
+  // What the workflow will auto-write into 비고 for this operator, e.g. "발행: 이지은 (Finance)".
+  // Shown as the 비고 placeholder so the automatic part is visible before saving.
+  function issuerNotePreview() {
+    var who = CertApp.operator.get();
+    return who ? t('cl.bulkIssue.issuedBy', { name: who }) : '';
   }
 
   function renderIssueRow(row, idx) {
@@ -673,7 +680,12 @@ CertApp.viewCertificateList = (function () {
     var expiryInput = dateTextInput(row.expiryDate, function (v) { row.expiryDate = v; });
     var amountField = amountFieldFor(row.category, row.amountA, function (v) { row.amountA = v; }, NEW_ISSUE_GC_OPTIONS);
     var paymentField = selectWithOther(PAYMENT_OPTIONS, row.paymentType, function (v) { row.paymentType = v; });
-    var sellerInput = ui.el('input', { type: 'text', value: row.sellerOperaId, oninput: function (e) { row.sellerOperaId = e.target.value; } });
+    // The operator's name is prepended to 비고 automatically on save (see workflow issuerNote), so
+    // show it as the placeholder — otherwise the empty box reads as "nothing will be recorded".
+    var sellerInput = ui.el('input', {
+      type: 'text', value: row.sellerOperaId, placeholder: issuerNotePreview(),
+      oninput: function (e) { row.sellerOperaId = e.target.value; }
+    });
     var discountInput = ui.el('input', { type: 'text', value: row.discountReceiptNote, oninput: function (e) { row.discountReceiptNote = e.target.value; } });
     var removeBtn = ui.el('button', { class: 'btn', text: '✕', onclick: function () { bulkIssueRows.splice(idx, 1); renderBulkIssuePanel(); } });
     return ui.el('tr', {}, [catSelect, detailField, certNoInput, amountField, issuedInput, expiryInput, paymentField, sellerInput, discountInput, removeBtn]
@@ -1468,7 +1480,8 @@ CertApp.viewCertificateList = (function () {
         return ui.formatCurrency(a - b - c - refund);
       } },
       { key: 'certificateDetail', label: t('cl.col.detail'), width: 124, format: function (v, r) { return editableText(r, 'certificateDetail'); } },
-      { key: 'billNo', label: t('cl.col.billNo'), width: 120, align: 'left', format: function (v, r) { return editableText(r, 'billNo'); } },
+      // Extra left gap + divider: 서비스 포함내역 and 비고 are both long free text and ran together.
+      { key: 'billNo', label: t('cl.col.billNo'), width: 128, align: 'left', cellClass: 'col-gap-left', format: function (v, r) { return editableText(r, 'billNo'); } },
       { key: 'discountReceiptNote', label: t('cl.col.discountReceipt'), width: 112, align: 'left', format: function (v, r) { return editableText(r, 'discountReceiptNote'); } }
     ];
 

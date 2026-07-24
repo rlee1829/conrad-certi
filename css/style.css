@@ -519,3 +519,7 @@ input.amount-input { text-align: right; }
 
 /* 마감 요약: 합계/순증감 행 강조 (overview 총계 행과 동일한 처리). */
 .view-posting .data-table tbody tr:last-child td { font-weight: 800; background: var(--accent-light) !important; border-top: 2px solid var(--accent); }
+
+/* 서비스 포함내역 ↔ 비고: 둘 다 긴 자유 텍스트라 붙어 보여서, 비고 앞에 여백 + 옅은 구분선. */
+.view-certlist .data-table th.col-gap-left,
+.view-certlist .data-table td.col-gap-left { padding-left: 14px; border-left: 1px solid var(--border); }

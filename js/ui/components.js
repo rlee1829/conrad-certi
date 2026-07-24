@@ -89,7 +89,12 @@ CertApp.ui.statusBadge = function (statusText, rec) {
 CertApp.ui.renderTable = function (container, columns, rows) {
   container.innerHTML = '';
   var table = CertApp.ui.el('table', { class: 'data-table' });
-  function alignClass(c) { return c.align === 'left' ? ' col-align-left' : (c.align === 'right' ? ' col-align-right' : ''); }
+  // A column may add its own class via `cellClass` (applied to both th and td) — used for
+  // per-column spacing/separators that the align option can't express.
+  function alignClass(c) {
+    var cls = c.align === 'left' ? ' col-align-left' : (c.align === 'right' ? ' col-align-right' : '');
+    return c.cellClass ? (cls + ' ' + c.cellClass) : cls;
+  }
 
   // If any column declares a pixel width, switch to a fixed layout with an explicit colgroup so
   // column widths stay identical no matter what the cell contents are (e.g. after re-sorting or
